@@ -77,3 +77,12 @@ Le choix de page et de vue n’est pas enregistré dans les JSON. Les [tests d�
 - [Contribuer et utiliser Git](CONTRIBUTING.md)
 
 Aucune licence de redistribution n’est définie dans ce dépôt ; son choix reste à préciser par le propriétaire.
+## BLIND, SORTIES et sequenceur mono
+
+Le bouton **SORTIES** ouvre la configuration materielle. Le selecteur **RGB** est visible uniquement dans cette vue et n'apparait plus dans la console.
+
+Le mode **BLIND** permet de programmer niveaux, couleurs, effets, sequenceurs et scenes sans envoyer les commandes de niveau au materiel. Le heartbeat USB reste actif. En quittant BLIND, l'etat programme est renvoye vers les sorties. **BLACKOUT** reste prioritaire et continue d'agir sur le materiel pendant BLIND.
+
+Le sequenceur pilote aussi une tranche mono : dans ce cas, seule l'intensite du pas courant est utilisee. Sur une tranche RGB, le pas fournit aussi sa couleur.
+
+Le bouton **FX** est cyclique : MAN -> STR -> FEU -> PUL -> MAN.

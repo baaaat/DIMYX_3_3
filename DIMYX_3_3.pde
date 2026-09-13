@@ -54,6 +54,7 @@ int stripWidth = 148, stripControlWidth = 128;
 int scenePanelX = 1200, scenePanelWidth = 260;
 int sceneListY = 244, sceneRowHeight = 38;
 boolean outputsView = false, scenesView = false, narrowLayout = false;
+boolean blindActive = false;
 final int stepSize = 22, stepGap = 4;
 PFont interfaceFont;
 String[] availablePorts = new String[0];
@@ -200,9 +201,10 @@ void layoutInterface() {
   stripWidth = available / channelsPerPage;
   stripControlWidth = stripWidth - 20;
   place("outputsView", 136, 16, 124, 32, true);
-  cp5.get(Button.class, "outputsView").setLabel(outputsView ? "< CONSOLE" : "SORTIES / USB");
+  cp5.get(Button.class, "outputsView").setLabel(outputsView ? "< CONSOLE" : "SORTIES");
   place("channelPrev", 276, 16, 34, 32, !(narrowLayout && scenesView));
   place("channelNext", 316, 16, 34, 32, !(narrowLayout && scenesView));
+  place("blindMode", 356, 16, 94, 32, true);
   place("scenesView", width - 284, 16, 104, 32, narrowLayout);
   cp5.get(Button.class, "scenesView").setLabel(outputsView ? (scenesView ? "SORTIES" : "USB") : (scenesView ? "TRANCHES" : "SCENES"));
   place("blackout", width - 168, 16, 146, 32, true);
@@ -211,7 +213,7 @@ void layoutInterface() {
     boolean visible = channelVisible(i), live = visible && !outputsView;
     place("name_" + i, x, 88, w, 28, visible);
     place("effect_" + i, x, 120, w, 28, live);
-    place("rgb_" + i, x, outputsView ? 136 : 152, w, 28, visible);
+    place("rgb_" + i, x, 136, w, 28, visible && outputsView);
     place("seq_" + i, x, 184, w, 28, live);
     for (int mode = 0; mode < 4; mode++) place("fxChoice_" + i + "_" + mode, x, 152 + mode * 32, w, 28, false);
     place("freq_" + i, x, 216, w, 28, live);
@@ -259,6 +261,11 @@ public void channelNext() {
   layoutInterface();
 }
 public void outputsView() { effectMenuChannel = -1; outputsView = !outputsView; layoutInterface(); }
+public void blindMode(boolean v) {
+  blindActive = v;
+  invalidateOutputCache();
+  println("BLIND " + (v ? "ON" : "OFF"));
+}
 public void scenesView() { effectMenuChannel = -1; scenesView = !scenesView; layoutInterface(); }
 public void refreshPorts() {
   availablePorts = Serial.list();
@@ -291,7 +298,7 @@ void drawConsoleInterface() {
   textSize(24);
   text("DIMYX", 22, 40);
   textSize(13);
-  if (!(narrowLayout && scenesView)) text((firstChannel() + 1) + "-" + min(nbChannels, firstChannel() + channelsPerPage) + " / " + nbChannels, 364, 37);
+  if (!(narrowLayout && scenesView)) text((firstChannel() + 1) + "-" + min(nbChannels, firstChannel() + channelsPerPage) + "/" + nbChannels, 458, 37);
   fill(serialConnected ? color(104, 220, 167) : color(247, 169, 109));
   text(serialConnected ? "USB CONNECTE" : "USB DECONNECTE", 22, 68);
   fill(190, 203, 217);
@@ -541,6 +548,14 @@ final int FX_FIRE = 2;
 final int FX_PULSE = 3;
 final int LEGACY_FX_SEQUENCER = 4;
 
+float channelMaster(Channel ch) {
+  return (ch.sequencer.active ? ch.sequencer.getCurrentIntensity() : ch.manualVal) / 4095.0;
+}
+
+boolean physicalOutputEnabled() {
+  return !blindActive;
+}
+
 void settings() {
   size(min(1600, max(800, displayWidth - 60)), min(1000, max(540, displayHeight - 100)));
 }
@@ -631,7 +646,7 @@ void draw() {
       lastHeartbeatTime = now;
     }
     
-    if (serialConnected && myPort != null && now - lastSendTime > sendInterval) {
+    if (serialConnected && myPort != null && physicalOutputEnabled() && now - lastSendTime > sendInterval) {
       for (int i = 0; i < nbChannels; i++) {
         Channel ch = allChannels.get(i);
         float eff = 1.0;
@@ -645,7 +660,7 @@ void draw() {
           eff = lerp(minN, 1.0, (sin(frameCount * 0.05 * ch.fxFreq + i) + 1) / 2.0);
         }
         
-        float master = (ch.sequencer.active ? ch.sequencer.getCurrentIntensity() : ch.manualVal) / 4095.0;
+        float master = channelMaster(ch);
         float fin = eff * master;
         
         if (ch.isRGB) {
@@ -1033,7 +1048,7 @@ void createGUI() {
   cp5.setFont(interfaceFont);
   for (int i = 0; i < nbChannels; i++) {
     capsuleButton("effect_" + i, "FX  MAN  >", color(60, 83, 109));
-cp5.addToggle("rgb_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("RGB", color(0, 200, 255)));
+    cp5.addToggle("rgb_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("RGB", color(0, 200, 255)));
     cp5.addToggle("seq_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("SEQ", color(255, 200, 0)));
     capsuleButton("clone_" + i, "CLONER", color(58, 77, 102));
     capsuleSlider("freq_" + i, "FREQ", 0.1, 10, 1, color(64, 111, 153));
@@ -1046,7 +1061,8 @@ cp5.addToggle("rgb_" + i).setSize(128, 28).setValue(false).setLabel("").setView(
     new CapsuleTextfield("pinG_" + i).setText(str(allChannels.get(i).pinG)).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinB_" + i).setText(str(allChannels.get(i).pinB)).setAutoClear(false).setLabel("");
   }
-  capsuleButton("outputsView", "SORTIES / USB", color(58, 77, 102));
+  capsuleButton("outputsView", "SORTIES", color(58, 77, 102));
+  cp5.addToggle("blindMode").setValue(false).setLabel("").setView(new ChipView("BLIND", color(191, 139, 48)));
   capsuleButton("scenesView", "SCENES", color(83, 64, 123));
   capsuleButton("channelPrev", "<", color(58, 77, 102));
   capsuleButton("channelNext", ">", color(58, 77, 102));
@@ -1359,7 +1375,8 @@ public void controlEvent(ControlEvent e) {
     updateEffectButton(i);
     updateChannelControls(i);
     return;
-  }  if (e.isController() && e.getName().startsWith("usbPort_")) {
+  }
+  if (e.isController() && e.getName().startsWith("usbPort_")) {
     int index = int(e.getName().substring(8));
     if (index >= 0 && index < availablePorts.length) connectToSerial(availablePorts[index]);
   }

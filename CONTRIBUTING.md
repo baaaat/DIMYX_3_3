@@ -72,3 +72,11 @@ Les paramètres `-ProcessingHome` et `-ControlP5Home` permettent d’indiquer d�
 Les essais couvrent cinq résolutions, les bornes des contrôles visibles, les clics après redimensionnement, les extrémités des faders, les choix directs d’effets, les pages de tranches/scènes/ports, le clonage entre pages, la création et le rappel de scènes en mémoire, une transition, la saisie et le blackout des tranches masquées. Les sauvegardes JSON et l’ouverture série sont remplacées par des doublures dans les tests.
 
 Validation locale : compilation et tests réussis avec Processing 4.5.5 et ControlP5 2.2.6 ; rendus inspectés aux résolutions de petit écran. Restent à réaliser sur l’installation cible : essais interactifs dans une fenêtre native, confort sur écran physique de 10–13 pouces avec sa mise à l’échelle, persistance après redémarrage et vérifications matérielles du protocole série.
+### Validation BLIND / SORTIES / mono
+
+- Verifier que RGB est cache dans la console et disponible dans SORTIES.
+- En mono, activer SEQ avec plusieurs intensites et verifier que seule l'intensite varie.
+- Activer BLIND, modifier faders, FX, sequenceurs et scenes : le materiel ne doit pas changer.
+- Verifier que le heartbeat reste actif en BLIND.
+- Quitter BLIND : l'etat programme doit etre envoye.
+- Verifier que BLACKOUT coupe toujours les sorties meme avec BLIND actif.

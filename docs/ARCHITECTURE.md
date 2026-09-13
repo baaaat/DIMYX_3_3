@@ -75,3 +75,10 @@ Le nombre de tranches est global, mais les callbacks ControlP5 sont explicitemen
 La boucle `draw` regroupe plusieurs responsabilités. Un futur découpage pourrait isoler modèles, interface, scènes/persistance et communication dans des onglets PDE du même dossier. Cette proposition n’est pas appliquée ici ; elle nécessiterait une validation de compilation, de l’initialisation globale et des callbacks.
 
 Le firmware étant absent, le comportement physique du contrôleur ne peut pas être déduit entièrement du sketch. Voir le [contrat série](PROTOCOLE_SERIE.md).
+## Evolutions console / sorties
+
+`blindActive` suspend uniquement l'envoi periodique des commandes `P,...`. Le heartbeat serie reste actif. La bascule BLIND invalide le cache de sortie afin de forcer une reemission complete quand on revient en live. Le BLACKOUT conserve son envoi direct `X`.
+
+`channelMaster` centralise la source de niveau : fader manuel ou intensite du pas courant lorsque le sequenceur est actif. Cette logique est identique en mono et en RGB ; la couleur du pas n'est utilisee qu'en RGB.
+
+Le controle `rgb_` n'est visible que dans la vue SORTIES. Le bouton `effect_` reste cyclique et ne cree aucun controle superpose.

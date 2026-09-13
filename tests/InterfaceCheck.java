@@ -50,7 +50,6 @@ public class InterfaceCheck {
     app.cp5.getWindow().mouseEvent(x,y,true);
     app.mousePressed=false;
     app.cp5.getWindow().mouseEvent(x,y,false);
-    app.applyPendingLayout();
   }
   public static void main(String[] args) {
     renderDirectory = args.length > 0 ? args[0] : null;
@@ -70,35 +69,43 @@ public class InterfaceCheck {
     for(int[] wh: new int[][]{{1600,1000},{1366,768},{1280,800},{1024,600},{800,540}}) {
       size(wh[0],wh[1]); bounds(); render(wh[0]+"x"+wh[1]);
       int first=app.firstChannel();
-      sequencerEffectsRegression(first);
-      boolean rgb=app.allChannels.get(first).isRGB;
-      click("rgb_"+first);
-      check(app.allChannels.get(first).isRGB != rgb,"resized toggle click");
-      click("rgb_"+first);
-      int mode=app.allChannels.get(first).fxMode;
-      click("effect_"+first);
-      check(app.allChannels.get(first).fxMode==mode,"opening effect menu preserves output");
-      bounds();
-      click("fxChoice_"+first+"_"+((mode+1)%4));
-      check(app.allChannels.get(first).fxMode==(mode+1)%4,"direct effect choice");
-      check(app.effectMenuChannel==-1,"effect menu closes");
+      boolean originalRgb=app.allChannels.get(first).isRGB;
+      check(!app.cp5.getController("rgb_"+first).isVisible(),"RGB hidden in console");
+      app.allChannels.get(first).fxMode=app.FX_MANUAL;
+      app.updateEffectButton(first);
+      app.updateChannelControls(first);
       if (!app.allChannels.get(first).sequencer.active) click("seq_"+first);
-      check(app.allChannels.get(first).sequencer.active,"sequencer active before FX regression");
+      check(app.allChannels.get(first).sequencer.active,"sequencer active before FX cycle");
       for (int fx : new int[]{1,2,3}) {
         click("effect_"+first);
-        click("fxChoice_"+first+"_"+fx);
-        check(app.allChannels.get(first).fxMode==fx,"SEQ+FX mode "+fx);
-        check(app.allChannels.get(first).sequencer.active,"SEQ remains active with FX "+fx);
+        check(app.allChannels.get(first).fxMode==fx,"FX cycle mode "+fx);
+        check(app.allChannels.get(first).sequencer.active,"SEQ stays active with FX "+fx);
         check(app.cp5.getController("bpm_"+first).isVisible(),"BPM visible with SEQ+FX "+fx);
-        check(app.cp5.getController("freq_"+first).isVisible(),"FREQ visible with SEQ+FX "+fx);
-        check(app.cp5.getController("min_"+first).isVisible(),"MIN visible with SEQ+FX "+fx);
+        check(app.cp5.getController("freq_"+first).isVisible(),"FREQ visible with FX "+fx);
+        check(app.cp5.getController("min_"+first).isVisible(),"MIN visible with FX "+fx);
       }
+      click("effect_"+first);
+      check(app.allChannels.get(first).fxMode==app.FX_MANUAL,"FX cycle back to MAN");
+      click("effect_"+first);
+      check(app.allChannels.get(first).fxMode==app.FX_STROBE,"FX still clickable after full cycle");
       float oldBpm=app.allChannels.get(first).sequencer.bpm;
       app.cp5.get(Slider.class,"bpm_"+first).setValue(Math.min(240f,oldBpm+1));
       check(app.allChannels.get(first).sequencer.bpm!=oldBpm || oldBpm==240,"BPM reacts after SEQ+FX");
       float oldFreq=app.allChannels.get(first).fxFreq;
       app.cp5.get(Slider.class,"freq_"+first).setValue(oldFreq>=9.9 ? 9.8 : oldFreq+0.1);
       check(app.allChannels.get(first).fxFreq!=oldFreq,"FREQ reacts after SEQ+FX");
+      var mono=app.allChannels.get(first);
+      mono.isRGB=false;
+      mono.sequencer.active=true;
+      mono.sequencer.currentStep=0;
+      mono.sequencer.steps.get(0).intensity=1536;
+      check(Math.abs(app.channelMaster(mono)-(1536f/4095f))<0.0001f,"mono sequencer intensity");
+      mono.isRGB=originalRgb;
+      check(app.physicalOutputEnabled(),"output live by default");
+      click("blindMode");
+      check(app.blindActive && !app.physicalOutputEnabled(),"BLIND blocks physical output");
+      click("blindMode");
+      check(!app.blindActive && app.physicalOutputEnabled(),"leaving BLIND restores output");
       var slider=app.cp5.get(Slider.class,"fader_"+first);
       int x=(int)slider.getPosition()[0]+slider.getWidth()/2;
       int y=(int)slider.getPosition()[1];
@@ -118,9 +125,15 @@ public class InterfaceCheck {
       app.mousePressed(); check(app.selectedStepChannel==app.firstChannel(),"step hit after paging");
       click("outputsView"); check(app.outputsView,"routing view button"); bounds();
       check(!app.cp5.getController("fader_"+app.firstChannel()).isVisible(),"routing hides live controls");
+      check(app.cp5.getController("rgb_"+app.firstChannel()).isVisible(),"routing shows RGB selector");
+      boolean routingRgb=app.allChannels.get(app.firstChannel()).isRGB;
+      click("rgb_"+app.firstChannel());
+      check(app.allChannels.get(app.firstChannel()).isRGB!=routingRgb,"RGB changes in routing view");
+      click("rgb_"+app.firstChannel());
       if(app.narrowLayout) {click("scenesView");bounds();render("usb-"+wh[0]);click("scenesView");}
       render("outputs-"+wh[0]);
       click("outputsView"); check(!app.outputsView,"console return");
+      check(!app.cp5.getController("rgb_"+app.firstChannel()).isVisible(),"RGB hidden after console return");
       if(app.narrowLayout) { click("scenesView");check(app.scenesView,"scene tab");bounds();render("scenes-"+wh[0]);click("scenesView"); }
       app.channelPage=0;app.layoutInterface();
     }
@@ -167,6 +180,6 @@ public class InterfaceCheck {
     check(!field.isFocus(),"hidden fields lose keyboard focus");
     app.applyBlackout(false);
     for(var ch:app.allChannels) check(ch.manualVal==0 && !ch.sequencer.active,"blackout hidden channels");
-    System.out.println("PASS: five resolutions, bounds, mouse hit areas, sliders, SEQ+FX, paging, routing, scenes, clone, text fields and blackout");
+    System.out.println("PASS: resolutions, FX cycle, BLIND, mono sequencer, routing RGB, paging, scenes, clone, text fields and blackout");
   }
 }
