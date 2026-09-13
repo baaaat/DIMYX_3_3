@@ -1,0 +1,72 @@
+{"channels": [
+  {
+    "pr": 3,
+    "pb": 6,
+    "pg": 5,
+    "name": "RGB",
+    "pm": 3
+  },
+  {
+    "pr": 3,
+    "pb": 6,
+    "pg": 5,
+    "name": "Tranche 2",
+    "pm": 3
+  },
+  {
+    "pr": 3,
+    "pb": 6,
+    "pg": 5,
+    "name": "Tranche 3",
+    "pm": 3
+  },
+  {
+    "pr": 3,
+    "pb": 6,
+    "pg": 5,
+    "name": "Tranche 4",
+    "pm": 3
+  },
+  {
+    "pr": 3,
+    "pb": 6,
+    "pg": 5,
+    "name": "Tranche 5",
+    "pm": 3
+  },
+  {
+    "pr": 3,
+    "pb": 6,
+    "pg": 5,
+    "name": "Tranche 6",
+    "pm": 3
+  },
+  {
+    "pr": 3,
+    "pb": 6,
+    "pg": 5,
+    "name": "Tranche 7",
+    "pm": 3
+  },
+  {
+    "pr": 3,
+    "pb": 6,
+    "pg": 5,
+    "name": "Tranche 8",
+    "pm": 3
+  },
+  {
+    "pr": 3,
+    "pb": 6,
+    "pg": 5,
+    "name": "Tranche 9",
+    "pm": 3
+  },
+  {
+    "pr": 3,
+    "pb": 6,
+    "pg": 5,
+    "name": "Tranche 10",
+    "pm": 3
+  }
+]}

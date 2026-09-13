@@ -1,0 +1,19 @@
+# Exports et compilation Processing
+application.*/
+out/
+build/
+*.class
+
+# Fichiers locaux des éditeurs et du système
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+*.log
+
+# Sauvegardes locales volontaires
+backups/

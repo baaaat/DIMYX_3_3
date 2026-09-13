@@ -1,0 +1,8 @@
+# Préserver les octets du sketch et des données existantes.
+*.pde -text
+*.json -text
+
+# Uniformiser uniquement la documentation et la configuration Git.
+*.md text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf

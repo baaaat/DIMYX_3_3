@@ -1,0 +1,39 @@
+# Données persistantes
+
+Les fichiers [`channelConfig.json`](../channelConfig.json) et [`scenes.json`](../scenes.json) sont lus et écrits par le sketch. Ils sont conservés et versionnés tels que reçus.
+
+## Configuration des tranches
+
+`channelConfig.json` contient un objet avec une liste `channels`. L’ordre correspond aux indices des tranches, de 0 à 9.
+
+| Clé | Sens |
+| --- | --- |
+| `name` | Nom affiché |
+| `pm` | Sortie mono |
+| `pr`, `pg`, `pb` | Sorties rouge, verte et bleue |
+
+Le callback `pin` accepte les sorties de 0 à 15. La configuration initiale réutilise plusieurs fois les mêmes sorties : elle ne décrit pas une affectation distincte pour chaque tranche. La correspondance avec le câblage dépend du contrôleur.
+
+Les noms et sorties sont sauvegardés lors de leurs modifications. Le mode RGB appartient aux états de scène, pas à ce fichier. En cas d’échec du chargement de configuration, le code tente de récupérer d’anciens champs dans la première scène, puis écrit une configuration.
+
+## Scènes
+
+`scenes.json` est une liste d’objets contenant `name` et `states`. Chaque scène attend 10 états, dans l’ordre des tranches.
+
+| Clé d’un état | Sens |
+| --- | --- |
+| `m` | Valeur manuelle, échelle 0–4095 |
+| `fx` | Mode : 0 manuel, 1 strobe, 2 feu, 3 pulsation, 4 séquenceur |
+| `f` | Paramètre de fréquence de l’effet |
+| `min` | Minimum de l’effet, échelle 0–4095 |
+| `rgb` | Activation du mode RGB |
+| `cr`, `cg`, `cb` | Couleur de base, composantes 0–255 |
+| `sa` | Activation du séquenceur |
+| `bpm` | Tempo du séquenceur |
+| `steps` | Liste de pas : `i` (intensité 0–4095), `r`, `g`, `b` (0–255) |
+
+Ces échelles décrivent l’usage du code ; elles ne constituent pas un schéma de validation automatique des fichiers. L’interface prévoit au maximum 10 pas, mais le chargeur parcourt tous les pas présents dans le JSON.
+
+La création, l’enregistrement et la suppression d’une scène réécrivent la liste des scènes. Les modifications de tranches doivent être capturées dans une scène pour y être conservées. La durée de transition, le port série et la sélection courante ne sont pas enregistrés dans ces formats.
+
+Il n’existe pas de champ de version de format. `loadScenes` intercepte globalement les erreurs et affiche « Aucun fichier », y compris pour certaines erreurs de contenu ; ce message ne prouve donc pas l’absence du fichier. Sauvegarder les données avant toute modification manuelle.
