@@ -12,6 +12,7 @@
 - [x] Supprimer le chip rgb on/off sur la vue console, il est visible uniquement en vue SORTIES
 - [x] Retablir le mode "blind" : programmation sans agir sur les sorties
 - [ ] Le sequenceur agit aussi sur le mode mono; Actuellement, l'animation UI est ok mais rien en sortie
+- [ ] retabllir un menu deroulant fonctionnel pour les fx
 - [x] Renommer "Sortie/USB" en "Sorties"
 - [ ] Préparer le support multi-carte wifi ESP32. 
 - [ ] En plus des pins, il faut pouvoir adresser une carte à une tranche
