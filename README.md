@@ -7,10 +7,12 @@ Console d’éclairage écrite en Processing (mode Java), avec interface Control
 1. Disposer de Processing en mode Java, de la bibliothèque **ControlP5** et de `processing.serial`.
 2. Conserver le nom du dossier `DIMYX_3_3` et ouvrir `DIMYX_3_3.pde` dans Processing.
 3. Conserver `channelConfig.json` et `scenes.json` à côté du sketch.
-4. Lancer le sketch. La fenêtre mesure 1600 × 1000 pixels.
-5. Pour les sorties physiques, connecter un contrôleur compatible avec le [protocole série](docs/PROTOCOLE_SERIE.md). En cas d’échec de la détection, l’interface affiche un sélecteur de port.
+4. Lancer le sketch. La fenêtre est redimensionnable et sa taille initiale tient compte de l’écran, jusqu’à 1600 × 1000 pixels.
+5. Pour les sorties physiques, connecter un contrôleur compatible avec le [protocole série](docs/PROTOCOLE_SERIE.md). Le choix manuel du port se trouve dans **SORTIES / USB**, puis **USB** sur une fenêtre étroite.
 
 Les versions de Processing et ControlP5 utilisées à l’origine ne sont pas renseignées. Le firmware et la référence du matériel ne sont pas fournis. Le lancement et la compatibilité matérielle restent à valider sur l’installation cible.
+
+La compilation et les tests d’interface ont été exécutés avec les installations locales **Processing 4.5.5** et **ControlP5 2.2.6**. Ils ne remplacent pas la validation sur le contrôleur physique.
 
 ## Organisation
 
@@ -22,6 +24,8 @@ DIMYX_3_3/
 ├── README.md             # Présentation et démarrage
 ├── CONTRIBUTING.md       # Travail avec Git et validation
 ├── AGENTS.md             # Consignes de maintenance automatisée
+├── TODO.md               # Suivi des travaux et validations
+├── tests/                # Compilation et essais d’interface sans matériel
 ├── .gitignore            # Exclusions des fichiers générés
 ├── .gitattributes        # Politique de fins de ligne
 └── docs/
@@ -38,9 +42,9 @@ Sélectionner une scène, puis utiliser **MONTER** ou **DESCENDRE** pour la dép
 
 ## Séquenceur et effets
 
-Activer **SEQ RUN** sur une tranche pour faire défiler ses pas, puis choisir **STR**, **PUL** ou **FEU** dans le menu d’effets. **MAN** laisse les pas jouer sans modulation supplémentaire. Le BPM règle le défilement ; FREQ et MIN règlent l’effet indépendamment. Changer d’effet ne coupe pas le séquenceur et ne le redémarre pas.
+Activer **SEQ** sur une tranche pour faire défiler ses pas, puis ouvrir **FX** et choisir **STR**, **PUL** ou **FEU**. **MAN** laisse les pas jouer sans modulation supplémentaire. Le menu remplace temporairement les commandes RGB/SEQ/FREQ/MIN de cette tranche ; choisir un effet ou cliquer en dehors le referme. Le BPM règle le défilement ; FREQ et MIN règlent l’effet indépendamment. Ouvrir le menu ne change pas l’effet, et choisir un effet ne coupe pas le séquenceur ni ne le redémarre.
 
-Pendant la séquence, l’intensité et la couleur proviennent du pas courant. L’effet module cette intensité : un pas à zéro reste éteint. Désactiver SEQ RUN restitue l’intensité manuelle et la couleur de base, en conservant l’effet choisi. REC mémorise la combinaison dans la scène.
+Pendant la séquence, l’intensité et la couleur proviennent du pas courant. L’effet module cette intensité : un pas à zéro reste éteint. Désactiver SEQ restitue l’intensité manuelle et la couleur de base, en conservant l’effet choisi. REC mémorise la combinaison dans la scène.
 
 Les anciennes scènes avec `fx: 4` sont converties au chargement en mode sans effet (`fx: 0`), en conservant leur état de séquenceur `sa` et leurs pas.
 
@@ -51,6 +55,19 @@ Les interrupteurs **RGB** et **SEQ** sont des capsules : curseur rond à gauche 
 Cliquer sur **CLONER** sous la tranche source, puis sur **COLLER ICI** sous la destination. **ANNULER** sous la source abandonne la copie. Le collage remplace le niveau manuel, le mode mono/RGB, la couleur, les effets, le tempo et tous les pas par les réglages capturés au clic sur CLONER. Les pas restent indépendants ; un séquenceur actif repart au premier pas. Le nom et les affectations de sorties de la destination sont conservés.
 
 La copie et le collage attendent la fin d’une transition de scène. Le collage agit immédiatement sur la tranche ; utiliser **REC** pour conserver le résultat dans une scène. Aucune scène n’est enregistrée automatiquement par le clonage.
+
+## Interface et petits écrans
+
+Boutons, scènes, champs de saisie et curseurs reprennent les formes arrondies des interrupteurs. Les couleurs distinguent les commandes ; les valeurs restent affichées dans les curseurs horizontaux et à côté des faders. Les pas ont des cibles de 22 × 22 pixels, séparées par des espaces sans action.
+
+La disposition est vérifiée pour des surfaces utiles de **800 × 540**, **1024 × 600**, **1280 × 800**, **1366 × 768** et **1600 × 1000** pixels. La résolution disponible et la mise à l’échelle du système comptent davantage que la diagonale de l’écran. La fenêtre Java2D impose une taille minimale pour conserver ces commandes accessibles.
+
+- Les flèches près du titre parcourent les pages de tranches. Le compteur indique les tranches visibles. Les dix tranches continuent de jouer, même lorsqu’elles sont masquées ; le clonage fonctionne entre pages.
+- À partir de 1000 pixels de largeur utile, les scènes restent à droite. En dessous, **SCENES / TRANCHES** bascule entre les deux vues. Le nombre de scènes par page suit la hauteur disponible.
+- **SORTIES / USB** affiche les affectations mono/RGB et les ports détectés. Sur une fenêtre étroite, **USB / SORTIES** bascule entre ces deux vues. Valider les noms et affectations avec **Entrée**, puis revenir avec **CONSOLE**.
+- **BLACKOUT** reste visible en haut à droite dans toutes les vues.
+
+Le choix de page et de vue n’est pas enregistré dans les JSON. Les [tests d’interface](CONTRIBUTING.md#tests-dinterface) permettent de vérifier la disposition et les interactions sans ouvrir de port physique.
 
 ## Documentation détaillée
 

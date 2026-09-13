@@ -46,7 +46,21 @@ Les contrôles modifient les objets `Channel`. Une `Scene` capture des `ChannelS
 
 Les effets sont `0` sans modulation (MAN), `1` stroboscope, `2` feu et `3` pulsation. `sequencer.active` choisit indépendamment la source : intensité/couleur du pas courant ou fader/couleur manuels. La sortie est l’intensité source multipliée par le facteur d’effet. Le minimum conserve son calcul existant (`fxMin / 4095`) comme plancher du facteur ; il ne rallume pas un pas nul.
 
-`toggleSeq` initialise le premier pas si nécessaire et redémarre au premier pas lors d’une activation. Le choix d’effet ne modifie plus le séquenceur. La synchronisation du bouton SEQ RUN depuis les scènes désactive temporairement ses événements pour ne pas redémarrer la lecture. Le code historique `fx: 4` est converti en `FX_MANUAL` au chargement, sans modifier `sa` ni les pas.
+`toggleSeq` initialise le premier pas si nécessaire et redémarre au premier pas lors d’une activation. Le choix d’effet ne modifie plus le séquenceur. La synchronisation du bouton SEQ depuis les scènes désactive temporairement ses événements pour ne pas redémarrer la lecture. Le code historique `fx: 4` est converti en `FX_MANUAL` au chargement, sans modifier `sa` ni les pas.
+
+## Interface adaptative
+
+`settings` dimensionne la fenêtre selon l’écran ; `setup` active le redimensionnement. `layoutInterface` recalcule les positions et dimensions lors d’un changement de taille, de page ou de vue. Il actualise aussi la surface de référence de ControlP5 pour conserver des zones de clic correctes après agrandissement. Les événements sont suspendus pendant cette opération.
+
+La largeur minimale d’une cellule de tranche est de 148 pixels. `channelsPerPage`, `channelPage` et `channelVisible` déterminent les tranches affichées. Toutes les tranches restent traitées dans `draw` : la pagination ne change ni les séquenceurs, ni les transitions, ni les sorties. Sous 1000 pixels de largeur, `scenesView` remplace les tranches par les scènes. `outputsView` affiche la configuration matérielle et les ports USB. Le blackout reste en dehors de ces vues.
+
+`channelX`, `stepsX`, `stepsY` et `wheelY` servent au rendu et à la détection des clics. Les espaces entre les pas sont inactifs. La suppression d’un pas recadre l’index de lecture pour éviter un accès au-delà du dernier pas.
+
+`CapsuleButtonView`, `CapsuleSliderView` et `ChipView` dessinent les contrôles ControlP5. Les sliders conservent leur traitement natif du glissement. `CapsuleTextfield` conserve la saisie de Textfield et remplace son dessin, avec défilement du texte autour du curseur ; un champ masqué perd le focus clavier.
+
+Le bouton `effect_` ouvre quatre choix `fxChoice_` en capsules, sans changer la valeur. Le choix applique directement le mode et ferme le menu. Le séquenceur reste indépendant. `refreshPortButtons` construit des pages de six boutons de ports à partir de `availablePorts` ; `refreshPorts` actualise cette liste par `Serial.list()`.
+
+La pagination des scènes adapte `scenesPerPage` à la hauteur (quatre à huit emplacements). Si la scène sélectionnée était visible avant redimensionnement, la nouvelle page la conserve. Le contour de sélection suit les coordonnées du panneau de scènes.
 
 ## Points de maintenance
 

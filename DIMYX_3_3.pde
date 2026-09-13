@@ -48,6 +48,296 @@ ChannelState channelClipboard = null;
 int cloneSourceIndex = -1;
 String cloneStatus = "CLONER : choisir une tranche source";
 
+int layoutWidth = -1, layoutHeight = -1;
+int channelPage = 0, channelsPerPage = 10;
+int stripWidth = 148, stripControlWidth = 128;
+int scenePanelX = 1200, scenePanelWidth = 260;
+int sceneListY = 244, sceneRowHeight = 38;
+boolean outputsView = false, scenesView = false, narrowLayout = false;
+final int stepSize = 22, stepGap = 4;
+PFont interfaceFont;
+String[] availablePorts = new String[0];
+ArrayList<Button> portButtons = new ArrayList<Button>();
+int portPage = 0;
+final int portsPerPage = 6;
+int effectMenuChannel = -1;
+
+String fitText(PGraphics g, String value, float available) {
+  if (g.textWidth(value) <= available) return value;
+  while (value.length() > 0 && g.textWidth(value + "...") > available) value = value.substring(0, value.length() - 1);
+  return value + "...";
+}
+
+class CapsuleButtonView implements ControllerView<Button> {
+  public void display(PGraphics g, Button button) {
+    g.pushStyle();
+    g.rectMode(CORNER);
+    int accent = button.getColor().getBackground();
+    g.fill(button.isPressed() ? lerpColor(accent, color(0), 0.3) : button.isMouseOver() ? lerpColor(accent, color(255), 0.18) : accent);
+    g.stroke(button.isMouseOver() ? color(230) : lerpColor(accent, color(255), 0.25));
+    g.strokeWeight(1);
+    g.rect(0, 0, button.getWidth(), button.getHeight(), button.getHeight() / 2.0);
+    g.fill(255);
+    g.textFont(interfaceFont);
+    g.textAlign(CENTER, CENTER);
+    g.text(fitText(g, button.getCaptionLabel().getText(), button.getWidth() - 16), button.getWidth() / 2, button.getHeight() / 2 - 1);
+    g.popStyle();
+  }
+}
+
+class CapsuleSliderView implements ControllerView<Slider> {
+  public void display(PGraphics g, Slider slider) {
+    g.pushStyle();
+    g.rectMode(CORNER);
+    g.ellipseMode(CENTER);
+    float w = slider.getWidth(), h = slider.getHeight();
+    float amount = constrain((slider.getValue() - slider.getMin()) / (slider.getMax() - slider.getMin()), 0, 1);
+    boolean vertical = slider.getDirection() == ControlP5.VERTICAL;
+    int accent = slider.getColor().getActive();
+    g.fill(lerpColor(accent, color(18, 24, 33), 0.85));
+    g.stroke(slider.isMouseOver() ? color(220) : color(66, 82, 98));
+    g.strokeWeight(1);
+    g.rect(0, 0, w, h, min(w, h) / 2);
+    g.noStroke();
+    g.fill(accent);
+    if (vertical) {
+      float cy = lerp(h - w / 2, w / 2, amount);
+      g.rect(w / 2 - 3, cy, 6, max(1, h - w / 2 - cy), 3);
+      g.fill(245);
+      g.ellipse(w / 2, cy, w - 8, w - 8);
+    } else {
+      // La piste reste sous le texte pour garder la valeur lisible.
+      float cx = constrain(slider.getValuePosition(), 9, w - 9);
+      g.rect(9, h - 7, max(1, cx - 9), 3, 2);
+      g.fill(255);
+      g.ellipse(cx, h - 6, 8, 8);
+      g.textFont(interfaceFont);
+      g.textAlign(CENTER, CENTER);
+      String value = slider.getName().startsWith("freq_") ? nf(slider.getValue(), 0, 1) : str(round(slider.getValue()));
+      String label = slider.getCaptionLabel().getText() + " " + value;
+      g.fill(255);
+      g.text(fitText(g, label, w - 20), w / 2, h / 2 - 5);
+    }
+    g.popStyle();
+  }
+}
+
+// La saisie et les raccourcis restent ceux de Textfield ; seul le dessin change.
+class CapsuleTextfield extends Textfield {
+  CapsuleTextfield(String name) { super(DIMYX_3_3.this.cp5, name); }
+
+  public void draw(PGraphics g) {
+    g.pushStyle();
+    g.pushMatrix();
+    g.translate(getPosition()[0], getPosition()[1]);
+    g.rectMode(CORNER);
+    g.fill(22, 29, 39);
+    g.stroke(isFocus() ? color(0, 200, 255) : color(67, 83, 101));
+    g.strokeWeight(1);
+    g.rect(0, 0, getWidth(), getHeight(), getHeight() / 2.0);
+    g.textFont(interfaceFont);
+    g.fill(240);
+    g.textAlign(LEFT, CENTER);
+    String value = getText();
+    int cursor = constrain(getIndex(), 0, value.length());
+    int start = 0;
+    if (isFocus()) while (start < cursor && g.textWidth(value.substring(start, cursor)) > getWidth() - 24) start++;
+    String visible = value.substring(start);
+    while (visible.length() > 0 && g.textWidth(visible) > getWidth() - 20) visible = visible.substring(0, visible.length() - 1);
+    g.text(visible, 10, getHeight() / 2 - 1);
+    if (isFocus() && (millis() / 500) % 2 == 0) {
+      float cx = 10 + g.textWidth(value.substring(start, cursor));
+      g.stroke(255);
+      g.line(cx, 6, cx, getHeight() - 6);
+    }
+    g.popMatrix();
+    g.popStyle();
+  }
+}
+
+Button capsuleButton(String name, String label, int accent) {
+  return cp5.addButton(name).setLabel(label).setColorBackground(accent).setView(new CapsuleButtonView());
+}
+
+Slider capsuleSlider(String name, String label, float lo, float hi, float value, int accent) {
+  return cp5.addSlider(name).setRange(lo, hi).setValue(value).setLabel(label).setColorActive(accent).setView(new CapsuleSliderView());
+}
+
+int firstChannel() { return channelPage * channelsPerPage; }
+boolean channelVisible(int i) {
+  return !(narrowLayout && scenesView) && i >= firstChannel() && i < min(nbChannels, firstChannel() + channelsPerPage);
+}
+int channelX(int i) { return 22 + (i - firstChannel()) * stripWidth; }
+int wheelY() { return height - 180; }
+int stepsY() { return height - 150; }
+int stepsX(int i) { return channelX(i) + (stripControlWidth - (5 * stepSize + 4 * stepGap)) / 2; }
+
+void place(String name, int x, int y, int w, int h, boolean visible) {
+  Controller<?> c = cp5.getController(name);
+  if (c == null) return;
+  c.setPosition(x, y);
+  c.setSize(w, h);
+  c.setVisible(visible);
+  if (c instanceof Slider) {
+    Slider slider = (Slider)c;
+    slider.setSliderMode(Slider.FIX);
+    slider.setView(new CapsuleSliderView());
+  }
+  if (!visible && c instanceof Textfield) ((Textfield)c).setFocus(false);
+}
+
+void layoutInterface() {
+  if (cp5 == null) return;
+  cp5.setBroadcast(false);
+  cp5.setGraphics(this, 0, 0);
+  int anchor = firstChannel();
+  narrowLayout = width < 1000;
+  scenePanelWidth = narrowLayout ? min(480, width - 44) : 264;
+  scenePanelX = narrowLayout ? (width - scenePanelWidth) / 2 : width - scenePanelWidth - 22;
+  int available = narrowLayout ? width - 32 : scenePanelX - 32;
+  channelsPerPage = constrain(available / 148, 1, nbChannels);
+  channelPage = min(anchor / channelsPerPage, (nbChannels - 1) / channelsPerPage);
+  stripWidth = available / channelsPerPage;
+  stripControlWidth = stripWidth - 20;
+  place("outputsView", 136, 16, 124, 32, true);
+  cp5.get(Button.class, "outputsView").setLabel(outputsView ? "< CONSOLE" : "SORTIES / USB");
+  place("channelPrev", 276, 16, 34, 32, !(narrowLayout && scenesView));
+  place("channelNext", 316, 16, 34, 32, !(narrowLayout && scenesView));
+  place("scenesView", width - 284, 16, 104, 32, narrowLayout);
+  cp5.get(Button.class, "scenesView").setLabel(outputsView ? (scenesView ? "SORTIES" : "USB") : (scenesView ? "TRANCHES" : "SCENES"));
+  place("blackout", width - 168, 16, 146, 32, true);
+  for (int i = 0; i < nbChannels; i++) {
+    int x = channelX(i), w = stripControlWidth;
+    boolean visible = channelVisible(i), live = visible && !outputsView;
+    place("name_" + i, x, 88, w, 28, visible);
+    place("effect_" + i, x, 120, w, 28, live);
+    boolean menu = live && effectMenuChannel == i;
+    place("rgb_" + i, x, outputsView ? 136 : 152, w, 28, visible && !menu);
+    place("seq_" + i, x, 184, w, 28, live && !menu);
+    for (int mode = 0; mode < 4; mode++) place("fxChoice_" + i + "_" + mode, x, 152 + mode * 32, w, 28, menu);
+    place("freq_" + i, x, 216, w, 28, live);
+    place("min_" + i, x, 248, w, 28, live);
+    place("fader_" + i, x + w / 2 - 16, 284, 32, max(48, height - 492), live);
+    place("bpm_" + i, x, height - 92, w, 28, live);
+    place("clone_" + i, x, height - 52, w, 32, live);
+    place("pinMono_" + i, x, 210, w, 32, visible && outputsView);
+    place("pinR_" + i, x, 210, w, 32, visible && outputsView);
+    place("pinG_" + i, x, 278, w, 32, visible && outputsView);
+    place("pinB_" + i, x, 346, w, 32, visible && outputsView);
+    updateChannelControls(i);
+    syncPinControls(i);
+  }
+  boolean showScenes = (!narrowLayout || scenesView) && !outputsView;
+  int x = scenePanelX, w = scenePanelWidth, bw = (w - 18) / 4;
+  String[] actions = {"newScene", "recScene", "goScene", "deleteScene"};
+  for (int i = 0; i < actions.length; i++) place(actions[i], x + i * (bw + 6), 88, bw, 30, showScenes);
+  place("moveSceneUp", x, 128, (w - 8) / 2, 30, showScenes);
+  place("moveSceneDown", x + (w + 8) / 2, 128, (w - 8) / 2, 30, showScenes);
+  place("fadeTimeSlider", x, 168, w, 30, showScenes);
+  place("sceneName", x, 208, w - 62, 28, showScenes);
+  place("clearName", x + w - 54, 208, 54, 28, showScenes);
+  int oldFirstScene = currentPage * scenesPerPage;
+  int oldSceneCount = scenesPerPage;
+  scenesPerPage = constrain((height - 306) / sceneRowHeight, 4, 8);
+  int sceneAnchor = (selectedSceneIndex >= oldFirstScene && selectedSceneIndex < oldFirstScene + oldSceneCount) ? selectedSceneIndex : oldFirstScene;
+  currentPage = min(sceneAnchor / scenesPerPage, max(0, (scenes.size() - 1) / scenesPerPage));
+  refreshSceneButtons();
+  place("refreshPorts", x, 100, w, 32, outputsView && (!narrowLayout || scenesView));
+  refreshPortButtons();
+  layoutWidth = width;
+  layoutHeight = height;
+  cp5.setBroadcast(true);
+}
+
+public void channelPrev() {
+  effectMenuChannel = -1;
+  channelPage = max(0, channelPage - 1);
+  layoutInterface();
+}
+public void channelNext() {
+  effectMenuChannel = -1;
+  channelPage = min((nbChannels - 1) / channelsPerPage, channelPage + 1);
+  layoutInterface();
+}
+public void outputsView() { effectMenuChannel = -1; outputsView = !outputsView; layoutInterface(); }
+public void scenesView() { effectMenuChannel = -1; scenesView = !scenesView; layoutInterface(); }
+public void refreshPorts() {
+  availablePorts = Serial.list();
+  portPage = min(portPage, max(0, (availablePorts.length - 1) / portsPerPage));
+  refreshPortButtons();
+}
+public void prevPorts() { portPage = max(0, portPage - 1); refreshPortButtons(); }
+public void nextPorts() { portPage = min(max(0, (availablePorts.length - 1) / portsPerPage), portPage + 1); refreshPortButtons(); }
+
+void refreshPortButtons() {
+  for (Button b : portButtons) b.remove();
+  portButtons.clear();
+  boolean visible = outputsView && (!narrowLayout || scenesView);
+  for (int i = portPage * portsPerPage; i < min(availablePorts.length, (portPage + 1) * portsPerPage); i++) {
+    Button b = capsuleButton("usbPort_" + i, availablePorts[i], color(58, 77, 102));
+    b.setPosition(scenePanelX, 152 + (i % portsPerPage) * 40).setSize(scenePanelWidth, 32).setVisible(visible);
+    portButtons.add(b);
+  }
+  place("prevPorts", scenePanelX, 400, 50, 30, visible && portPage > 0);
+  place("nextPorts", scenePanelX + scenePanelWidth - 50, 400, 50, 30, visible && (portPage + 1) * portsPerPage < availablePorts.length);
+}
+
+void drawConsoleInterface() {
+  pushStyle();
+  textFont(interfaceFont);
+  textAlign(LEFT, BASELINE);
+  background(18, 23, 31);
+  noStroke();
+  fill(242);
+  textSize(24);
+  text("DIMYX", 22, 40);
+  textSize(13);
+  if (!(narrowLayout && scenesView)) text((firstChannel() + 1) + "-" + min(nbChannels, firstChannel() + channelsPerPage) + " / " + nbChannels, 364, 37);
+  fill(serialConnected ? color(104, 220, 167) : color(247, 169, 109));
+  text(serialConnected ? "USB CONNECTE" : "USB DECONNECTE", 22, 68);
+  fill(190, 203, 217);
+  text(fitText(g, "SCENE : " + getCurrentSceneName(), width - 220), 192, 68);
+  for (int i = 0; i < nbChannels; i++) {
+    if (!channelVisible(i)) continue;
+    int x = channelX(i), w = stripControlWidth;
+    fill(26, 34, 45);
+    rect(x - 8, 80, w + 16, height - 96, 18);
+    if (outputsView) {
+      fill(197, 212, 229);
+      text(allChannels.get(i).isRGB ? "SORTIE ROUGE" : "SORTIE MONO", x, 199);
+      if (allChannels.get(i).isRGB) {
+        text("SORTIE VERTE", x, 267);
+        text("SORTIE BLEUE", x, 335);
+      }
+      text("Valider avec Entree", x, 410);
+      continue;
+    }
+    Channel ch = allChannels.get(i);
+    fill(220);
+    textAlign(LEFT, CENTER);
+    text(str(ch.manualVal), x + w / 2 + 23, 300);
+    textAlign(LEFT, BASELINE);
+    if (ch.isRGB) {
+      color wheelColor = ch.baseColor;
+      if (stepEditMode && i == selectedStepChannel && hasSelectedStep()) {
+        Step step = ch.sequencer.steps.get(selectedStepIndex);
+        wheelColor = color(step.colorR, step.colorG, step.colorB);
+      }
+      drawHSVWheel(x + w / 2, wheelY(), 18, wheelColor);
+    }
+    drawStepSequencer(stepsX(i), stepsY(), i);
+  }
+  fill(168, 185, 204);
+  textSize(11);
+  text(fitText(g, cloneStatus, width - 44), 22, height - 3);
+  if (outputsView && (!narrowLayout || scenesView)) {
+    textSize(13);
+    text(fitText(g, "PORT USB : " + connectedPortName, scenePanelWidth), scenePanelX, 88);
+    if (availablePorts.length == 0) text("Aucun port detecte", scenePanelX, 175);
+  }
+  popStyle();
+}
+
 class ChipView implements ControllerView<Toggle> {
   String label;
   int accent;
@@ -72,7 +362,7 @@ class ChipView implements ControllerView<Toggle> {
     g.ellipse(on ? w - h / 2 : h / 2, h / 2, h - 6, h - 6);
     g.fill(on ? color(15, 25, 30) : color(245));
     g.textAlign(CENTER, CENTER);
-    g.textSize(11);
+    g.textFont(interfaceFont);
     g.text(label + (on ? " ON" : " OFF"), on ? (w - h) / 2 : (w + h) / 2, h / 2 - 1);
     g.popStyle();
   }
@@ -252,11 +542,22 @@ final int FX_FIRE = 2;
 final int FX_PULSE = 3;
 final int LEGACY_FX_SEQUENCER = 4;
 
+void settings() {
+  size(min(1600, max(800, displayWidth - 60)), min(1000, max(540, displayHeight - 100)));
+}
+
 void setup() {
-  size(1600, 1000);
+  surface.setResizable(true);
+  if (surface.getNative() instanceof processing.awt.PSurfaceAWT.SmoothCanvas) {
+    processing.awt.PSurfaceAWT.SmoothCanvas canvas = (processing.awt.PSurfaceAWT.SmoothCanvas)surface.getNative();
+    canvas.getFrame().setMinimumSize(new java.awt.Dimension(800, 580));
+  }
+  interfaceFont = createFont("SansSerif", 13, true);
+  textFont(interfaceFont);
   surface.setTitle("Console Theatre");
   cp5 = new ControlP5(this);
   cp5.setAutoDraw(false);
+  cp5.setFont(interfaceFont);
   
   for (int i = 0; i < nbChannels; i++) {
     allChannels.add(new Channel("Tranche " + (i + 1), i));
@@ -266,6 +567,7 @@ void setup() {
   loadScenes();
   loadChannelConfig();
   updateGUIFromChannels();
+  layoutInterface();
   
   println("Scan des ports USB...");
   String foundPort = findArduinoPort();
@@ -275,12 +577,15 @@ void setup() {
   } else {
     println("Detection auto echouee.");
     nextPortScanTime = millis() + portScanInterval;
-    cp5.get(ScrollableList.class, "portSelector").show();
+    refreshPorts();
   }
 }
 
 void draw() {
-  background(30);
+  if (width != layoutWidth || height != layoutHeight) {
+    effectMenuChannel = -1;
+    layoutInterface();
+  }
   long now = millis();
   pollSerialResponses();
   
@@ -315,30 +620,7 @@ void draw() {
     }
   }
   
-  fill(255);
-  textSize(24);
-  text("CONSOLE THEATRE", 20, 35);
-  
-  fill(serialConnected ? color(100, 255, 100) : color(255, 100, 100));
-  textSize(14);
-  text("● " + (serialConnected ? "CONNECTE" : "DECONNECTE"), 20, 60);
-  fill(220);
-  text("SCENE : " + getCurrentSceneName(), 180, 60);
-  textSize(12);
-  text(cloneStatus, 510, 60);
-  
-  for (int i = 0; i < nbChannels; i++) {
-    int x = 30 + i * 115;
-    if (allChannels.get(i).isRGB) {
-      color wheelColor = allChannels.get(i).baseColor;
-      if (stepEditMode && i == selectedStepChannel && hasSelectedStep()) {
-        Step step = allChannels.get(i).sequencer.steps.get(selectedStepIndex);
-        wheelColor = color(step.colorR, step.colorG, step.colorB);
-      }
-      drawHSVWheel(x + 50, 815, 22, wheelColor);
-    }
-    drawStepSequencer(x, 875, i);
-  }
+  drawConsoleInterface();
   
   if (serialConnected && myPort != null) {
     if (now - lastHeartbeatTime > heartbeatInterval) {
@@ -402,6 +684,7 @@ void draw() {
 }
 
 void drawSelectedSceneBorder() {
+  if (outputsView || (narrowLayout && !scenesView)) return;
   if (selectedSceneIndex < 0 || selectedSceneIndex >= scenes.size()) return;
   int sceneOffset = selectedSceneIndex - currentPage * scenesPerPage;
   if (sceneOffset < 0 || sceneOffset >= scenesPerPage) return;
@@ -409,18 +692,18 @@ void drawSelectedSceneBorder() {
   noFill();
   stroke(230, 40, 40);
   strokeWeight(3);
-  rect(1198, 308 + sceneOffset * 40, 264, 39);
+  rect(scenePanelX - 2, sceneListY + sceneOffset * sceneRowHeight - 2, scenePanelWidth + 4, 34, 17);
   noStroke();
 }
 
 void drawStepSequencer(int x, int y, int i) {
   Channel ch = allChannels.get(i);
   ArrayList<Step> steps = ch.sequencer.steps;
-  int sz = 18, gap = 3, perRow = sequencerStepsPerRow;
+  int sz = stepSize, gap = stepGap, perRow = sequencerStepsPerRow;
   
   fill(ch.sequencer.active ? color(50, 50, 80) : color(40));
   noStroke();
-  rect(x - 5, y - 5, perRow * (sz + gap) + 10, 60);
+  rect(x - 4, y - 4, perRow * (sz + gap), 56, 12);
   
   fill(ch.sequencer.active ? color(0, 255, 0) : color(100));
   ellipse(x + perRow * (sz + gap) - 10, y - 10, 8, 8);
@@ -445,7 +728,7 @@ void drawStepSequencer(int x, int y, int i) {
     
     int r = j / perRow;
     int col = j % perRow;
-    rect(x + col * (sz + gap), y + r * (sz + gap), sz, sz);
+    rect(x + col * (sz + gap), y + r * (sz + gap), sz, sz, 7);
   }
   
   if (steps.size() < maxSequencerSteps) {
@@ -455,7 +738,7 @@ void drawStepSequencer(int x, int y, int i) {
     fill(80);
     stroke(150);
     strokeWeight(2);
-    rect(x + nc * (sz + gap), y + nr * (sz + gap), sz, sz);
+    rect(x + nc * (sz + gap), y + nr * (sz + gap), sz, sz, 7);
     
     stroke(255);
     strokeWeight(3);
@@ -474,7 +757,7 @@ void updateGUIFromChannels() {
   for (int i = 0; i < nbChannels; i++) {
     Channel ch = allChannels.get(i);
     cp5.get(Slider.class, "fader_" + i).setValue(ch.manualVal);
-    cp5.get(DropdownList.class, "fx_" + i).setValue(ch.fxMode);
+    updateEffectButton(i);
     
     updateChannelControls(i);
     cp5.get(Slider.class, "freq_" + i).setValue(ch.fxFreq);
@@ -536,12 +819,19 @@ void clearChannelClipboard() {
   for (int i = 0; i < nbChannels; i++) cp5.get(Button.class, "clone_" + i).setLabel("CLONER");
 }
 
+void updateEffectButton(int i) {
+  String[] labels = {"MAN", "STR", "FEU", "PUL"};
+  int mode = constrain(allChannels.get(i).fxMode, 0, 3);
+  cp5.get(Button.class, "effect_" + i).setLabel("FX  " + labels[mode] + "  v");
+}
+
 void updateChannelControls(int i) {
   Channel ch = allChannels.get(i);
-  boolean showFX = ch.fxMode == FX_STROBE || ch.fxMode == FX_FIRE || ch.fxMode == FX_PULSE;
+  boolean live = channelVisible(i) && !outputsView;
+  boolean showFX = live && effectMenuChannel != i && ch.fxMode != FX_MANUAL;
   cp5.get(Slider.class, "freq_" + i).setVisible(showFX);
   cp5.get(Slider.class, "min_" + i).setVisible(showFX);
-  cp5.get(Slider.class, "bpm_" + i).setVisible(ch.sequencer.active);
+  cp5.get(Slider.class, "bpm_" + i).setVisible(live && ch.sequencer.active);
 }
 
 String getCurrentSceneName() {
@@ -603,74 +893,59 @@ boolean hasSelectedStep() {
 }
 
 void mousePressed() {
-  for (int i = 0; i < nbChannels; i++) {
-    if (allChannels.get(i).isRGB) {
-      float cx = 30 + i * 115 + 50;
-      float cy = 815;
-      if (dist(mouseX, mouseY, cx, cy) < 22) {
-        float a = atan2(mouseY - cy, mouseX - cx);
-        if (a < 0) a += TWO_PI;
-        color selectedColor = hsvToRgb(a / TWO_PI, dist(mouseX, mouseY, cx, cy) / 22, 1.0);
-        if (stepEditMode && i == selectedStepChannel && hasSelectedStep()) {
-          Step step = allChannels.get(i).sequencer.steps.get(selectedStepIndex);
-          step.colorR = red(selectedColor);
-          step.colorG = green(selectedColor);
-          step.colorB = blue(selectedColor);
-        } else {
-          allChannels.get(i).baseColor = selectedColor;
-        }
-      }
+  if (effectMenuChannel >= 0) {
+    int x = channelX(effectMenuChannel);
+    if (mouseX < x || mouseX >= x + stripControlWidth || mouseY < 120 || mouseY >= 280) {
+      effectMenuChannel = -1;
+      layoutInterface();
     }
   }
-  
+  if (outputsView || (narrowLayout && scenesView)) return;
   for (int i = 0; i < nbChannels; i++) {
-    int x = 30 + i * 115;
-    int y = 875;
-    int sz = 18, gap = 3, perRow = sequencerStepsPerRow;
-    ArrayList<Step> steps = allChannels.get(i).sequencer.steps;
-    
-    if (mouseX >= x - 5 && mouseX < x + perRow * (sz + gap) + 5 && mouseY >= y - 5 && mouseY < y + 60) {
-      boolean clickedOnStep = false;
-      
-      int visibleSteps = min(steps.size(), maxSequencerSteps);
-      for (int j = 0; j < visibleSteps; j++) {
-        int r = j / perRow;
-        int c = j % perRow;
-        
-        if (mouseX >= x + c * (sz + gap) && mouseX < x + (c + 1) * (sz + gap) && 
-            mouseY >= y + r * (sz + gap) && mouseY < y + (r + 1) * (sz + gap)) {
-          
-          if (mouseButton == LEFT) {
-            selectedStepChannel = i;
-            selectedStepIndex = j;
-            boolean isDoubleClick = lastClickedStepChannel == i && lastClickedStepIndex == j && millis() - lastStepClickTime < 350;
-            if (isDoubleClick) startStepEditing(i, j);
-            else stepEditMode = false;
-            lastStepClickTime = millis();
-            lastClickedStepChannel = i;
-            lastClickedStepIndex = j;
-          } else if (mouseButton == RIGHT) {
-            steps.remove(j);
-            if (selectedStepChannel == i) {
-              selectedStepIndex = -1;
-              stepEditMode = false;
-            }
-          }
-          clickedOnStep = true;
-          break;
+    if (!channelVisible(i)) continue;
+    Channel ch = allChannels.get(i);
+    float cx = channelX(i) + stripControlWidth / 2, cy = wheelY();
+    if (mouseButton == LEFT && ch.isRGB && dist(mouseX, mouseY, cx, cy) < 18) {
+      float a = atan2(mouseY - cy, mouseX - cx);
+      if (a < 0) a += TWO_PI;
+      color selectedColor = hsvToRgb(a / TWO_PI, dist(mouseX, mouseY, cx, cy) / 18, 1.0);
+      if (stepEditMode && i == selectedStepChannel && hasSelectedStep()) {
+        Step step = ch.sequencer.steps.get(selectedStepIndex);
+        step.colorR = red(selectedColor);
+        step.colorG = green(selectedColor);
+        step.colorB = blue(selectedColor);
+      } else ch.baseColor = selectedColor;
+      return;
+    }
+    for (int j = 0; j < maxSequencerSteps; j++) {
+      int x = stepsX(i) + (j % sequencerStepsPerRow) * (stepSize + stepGap);
+      int y = stepsY() + (j / sequencerStepsPerRow) * (stepSize + stepGap);
+      if (mouseX < x || mouseX >= x + stepSize || mouseY < y || mouseY >= y + stepSize) continue;
+      if (j < ch.sequencer.steps.size()) {
+        if (mouseButton == LEFT) {
+          selectedStepChannel = i;
+          selectedStepIndex = j;
+          boolean doubleClick = lastClickedStepChannel == i && lastClickedStepIndex == j && millis() - lastStepClickTime < 350;
+          if (doubleClick) startStepEditing(i, j);
+          else stepEditMode = false;
+          lastStepClickTime = millis();
+          lastClickedStepChannel = i;
+          lastClickedStepIndex = j;
+        } else if (mouseButton == RIGHT) {
+          ch.sequencer.steps.remove(j);
+          ch.sequencer.currentStep = ch.sequencer.steps.isEmpty() ? 0 : min(ch.sequencer.currentStep, ch.sequencer.steps.size() - 1);
+          if (selectedStepChannel == i) { selectedStepIndex = -1; stepEditMode = false; }
         }
-      }
-      
-      if (!clickedOnStep && mouseButton == LEFT && steps.size() < maxSequencerSteps) {
-        color col = allChannels.get(i).baseColor;
-        steps.add(new Step(2048, red(col), green(col), blue(col)));
+      } else if (j == ch.sequencer.steps.size() && mouseButton == LEFT) {
+        color col = ch.baseColor;
+        ch.sequencer.steps.add(new Step(2048, red(col), green(col), blue(col)));
         selectedStepChannel = i;
-        selectedStepIndex = steps.size() - 1;
+        selectedStepIndex = j;
         stepEditMode = false;
       }
+      return;
     }
   }
-  
 }
 
 String findArduinoPort() {
@@ -748,7 +1023,7 @@ void handleConnectionLoss() {
     }
     myPort = null;
   }
-  cp5.get(ScrollableList.class, "portSelector").show();
+  refreshPorts();
 }
 
 void resumeLastScene() {
@@ -762,116 +1037,64 @@ void resumeLastScene() {
 
 void createGUI() {
   cp5.setBroadcast(false);
+  if (interfaceFont == null) interfaceFont = createFont("SansSerif", 13, true);
+  cp5.setFont(interfaceFont);
   for (int i = 0; i < nbChannels; i++) {
-    int x = 30 + i * 115;
-    
-     cp5.addDropdownList("fx_" + i).setPosition(x, 100).setSize(80, 120).setItemHeight(20).setBarHeight(20)
-       .addItem("MAN", FX_MANUAL).addItem("STR", FX_STROBE).addItem("FEU", FX_FIRE).addItem("PUL", FX_PULSE).setValue(FX_MANUAL).setOpen(false);
-    
-    cp5.addToggle("rgb_" + i).setPosition(x, 226).setSize(100, 24).setValue(false).setLabel("").setView(new ChipView("RGB", color(0, 200, 255)));
-    
-    cp5.addToggle("seq_" + i).setPosition(x, 255).setSize(100, 24).setValue(false).setLabel("").setView(new ChipView("SEQ", color(255, 200, 0)));
-    cp5.addButton("clone_" + i).setPosition(x, 970).setSize(100, 24).setLabel("CLONER");
-    
-    cp5.addSlider("freq_" + i).setPosition(x, 285).setSize(100, 20).setRange(0.1, 10.0).setValue(1.0).setDecimalPrecision(1).setLabel("FREQ");
-    
-    cp5.addSlider("min_" + i).setPosition(x, 315).setSize(100, 20).setRange(0, 4095).setValue(0).setDecimalPrecision(0).setLabel("MIN");
-    
-    cp5.addSlider("bpm_" + i).setPosition(x, 940).setSize(100, 20).setRange(60, 240).setValue(120).setDecimalPrecision(0).setLabel("BPM").setVisible(false);
-    
-    cp5.addSlider("fader_" + i).setPosition(x + 10, 345).setSize(80, 360).setRange(0, 4095).setValue(0).setDecimalPrecision(0).setLabel("");
-    
-    cp5.addTextfield("name_" + i).setPosition(x, 720).setSize(100, 20).setText(allChannels.get(i).name).setLabel("").setAutoClear(false);
-    
-    cp5.addTextfield("pinMono_" + i).setPosition(x, 748).setSize(100, 20).setText(str(3)).setLabel("PIN").setAutoClear(false);
-    
-    cp5.addTextfield("pinR_" + i).setPosition(x, 748).setSize(30, 20).setText(str(3)).setLabel("R").setAutoClear(false).hide();
-    
-    cp5.addTextfield("pinG_" + i).setPosition(x + 35, 748).setSize(30, 20).setText(str(5)).setLabel("G").setAutoClear(false).hide();
-    
-    cp5.addTextfield("pinB_" + i).setPosition(x + 70, 748).setSize(30, 20).setText(str(6)).setLabel("B").setAutoClear(false).hide();
+    capsuleButton("effect_" + i, "FX  MAN  v", color(60, 83, 109));
+    String[] effects = {"MAN", "STR", "FEU", "PUL"};
+    for (int mode = 0; mode < effects.length; mode++) capsuleButton("fxChoice_" + i + "_" + mode, effects[mode], color(74, 99, 132));
+    cp5.addToggle("rgb_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("RGB", color(0, 200, 255)));
+    cp5.addToggle("seq_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("SEQ", color(255, 200, 0)));
+    capsuleButton("clone_" + i, "CLONER", color(58, 77, 102));
+    capsuleSlider("freq_" + i, "FREQ", 0.1, 10, 1, color(64, 111, 153));
+    capsuleSlider("min_" + i, "MIN", 0, 4095, 0, color(64, 111, 153));
+    capsuleSlider("bpm_" + i, "BPM", 60, 240, 120, color(121, 99, 32));
+    capsuleSlider("fader_" + i, "", 0, 4095, 0, color(0, 183, 223));
+    new CapsuleTextfield("name_" + i).setText(allChannels.get(i).name).setAutoClear(false).setLabel("");
+    new CapsuleTextfield("pinMono_" + i).setText(str(allChannels.get(i).pinMono)).setAutoClear(false).setLabel("");
+    new CapsuleTextfield("pinR_" + i).setText(str(allChannels.get(i).pinR)).setAutoClear(false).setLabel("");
+    new CapsuleTextfield("pinG_" + i).setText(str(allChannels.get(i).pinG)).setAutoClear(false).setLabel("");
+    new CapsuleTextfield("pinB_" + i).setText(str(allChannels.get(i).pinB)).setAutoClear(false).setLabel("");
   }
-  
-  int px = 1200;
-  
-  cp5.addTextlabel("sceneTitle").setText("SCENES").setPosition(px, 90);
-  
-  cp5.addButton("newScene").setPosition(px, 120).setSize(60, 40).setColorBackground(color(50, 120, 200)).setLabel("+ NEW");
-  
-  cp5.addButton("recScene").setPosition(px + 65, 120).setSize(60, 40).setColorBackground(color(200, 150, 50)).setLabel("REC");
-  
-  cp5.addButton("goScene").setPosition(px + 130, 120).setSize(60, 40).setColorBackground(color(50, 200, 50)).setLabel("GO");
-  
-  cp5.addButton("deleteScene").setPosition(px + 195, 120).setSize(65, 40).setColorBackground(color(150, 50, 50)).setLabel("DEL");
-  
-  cp5.addButton("moveSceneUp").setPosition(px, 170).setSize(125, 25).setLabel("MONTER");
-  cp5.addButton("moveSceneDown").setPosition(px + 135, 170).setSize(125, 25).setLabel("DESCENDRE");
-
-  cp5.addButton("prevPage").setPosition(px, 650).setSize(40, 30).setLabel("<").hide();
-  
-  cp5.addButton("nextPage").setPosition(px + 220, 650).setSize(40, 30).setLabel(">").hide();
-  
-  cp5.addSlider("fadeTimeSlider").setPosition(px, 210).setSize(260, 30).setRange(0, 10000).setValue(2000).setDecimalPrecision(0).setLabel("FADE TIME (ms)");
-  
-  cp5.addTextfield("sceneName").setPosition(px, 260).setSize(200, 25).setText("Nouvelle Scene").setLabel("Nom :").setAutoClear(false);
-  
-  cp5.addButton("clearName").setPosition(px + 210, 260).setSize(50, 25).setLabel("CLR").setColorBackground(color(80));
-  
-  cp5.addButton("blackout").setPosition(px, 900).setSize(260, 60).setColorBackground(color(200, 0, 0)).setLabel("BLACKOUT");
-  
-  cp5.addScrollableList("portSelector").setPosition(px, 700).setSize(260, 180).setBarHeight(20).setItemHeight(20).addItems(Serial.list()).setType(ScrollableList.LIST).hide();
+  capsuleButton("outputsView", "SORTIES / USB", color(58, 77, 102));
+  capsuleButton("scenesView", "SCENES", color(83, 64, 123));
+  capsuleButton("channelPrev", "<", color(58, 77, 102));
+  capsuleButton("channelNext", ">", color(58, 77, 102));
+  capsuleButton("newScene", "+ NEW", color(43, 109, 169));
+  capsuleButton("recScene", "REC", color(143, 103, 27));
+  capsuleButton("goScene", "GO", color(32, 125, 80));
+  capsuleButton("deleteScene", "DEL", color(151, 58, 71));
+  capsuleButton("moveSceneUp", "MONTER", color(58, 77, 102));
+  capsuleButton("moveSceneDown", "DESCENDRE", color(58, 77, 102));
+  capsuleButton("prevPage", "<", color(58, 77, 102));
+  capsuleButton("nextPage", ">", color(58, 77, 102));
+  capsuleSlider("fadeTimeSlider", "FONDU ms", 0, 10000, 2000, color(64, 111, 153));
+  new CapsuleTextfield("sceneName").setText("Nouvelle Scene").setAutoClear(false).setLabel("");
+  capsuleButton("clearName", "CLR", color(58, 77, 102));
+  capsuleButton("blackout", "BLACKOUT", color(191, 37, 63));
+  capsuleButton("refreshPorts", "ACTUALISER LES PORTS", color(58, 77, 102));
+  capsuleButton("prevPorts", "<", color(58, 77, 102));
+  capsuleButton("nextPorts", ">", color(58, 77, 102));
+  availablePorts = Serial.list();
+  layoutInterface();
   cp5.setBroadcast(true);
 }
 
 void refreshSceneButtons() {
-  for (Button b : sceneButtons) {
-    b.remove();
-  }
+  for (Button b : sceneButtons) b.remove();
   sceneButtons.clear();
-  
-  int px = 1200;
-  int sy = 310;
-  int bh = 35;
-  int sp = 5;
-  int si = currentPage * scenesPerPage;
-  int ei = min(si + scenesPerPage, scenes.size());
-  
-  color[] sc = {
-    color(100, 150, 200), color(150, 100, 200), color(200, 100, 150), color(200, 150, 100),
-    color(150, 200, 100), color(100, 200, 150), color(180, 120, 180), color(120, 180, 180)
-  };
-  
-  for (int i = si; i < ei; i++) {
-    int d = i - si;
-    String label = scenes.get(i).name;
-    
-    if (i == selectedSceneIndex) {
-      label = "▶ " + label;
-    }
-    
-    Button b = cp5.addButton("scene_" + d).setPosition(px, sy + d * (bh + sp)).setSize(260, bh)
-       .setLabel(label)
-       .setColorBackground(sc[d % 8])
-       .setColorForeground(color(red(sc[d % 8]) + 30, green(sc[d % 8]) + 30, blue(sc[d % 8]) + 30))
-       .setColorActive(color(red(sc[d % 8]) + 50, green(sc[d % 8]) + 50, blue(sc[d % 8]) + 50));
-    
-    if (i == selectedSceneIndex) {
-      b.setColorBackground(sc[d % 8]);
-      b.setColorForeground(color(red(sc[d % 8]) + 30, green(sc[d % 8]) + 30, blue(sc[d % 8]) + 30));
-      b.setColorActive(color(red(sc[d % 8]) + 50, green(sc[d % 8]) + 50, blue(sc[d % 8]) + 50));
-      b.getCaptionLabel().setColor(color(255));
-    }
-    
+  boolean visible = !outputsView && (!narrowLayout || scenesView);
+  int first = currentPage * scenesPerPage;
+  color[] accents = {color(57, 98, 135), color(105, 73, 137), color(143, 69, 105), color(139, 95, 47), color(83, 114, 58), color(43, 115, 107), color(108, 72, 107), color(69, 103, 112)};
+  for (int i = first; i < min(first + scenesPerPage, scenes.size()); i++) {
+    int offset = i - first;
+    Button b = capsuleButton("scene_" + offset, scenes.get(i).name, accents[i % accents.length]);
+    b.setPosition(scenePanelX, sceneListY + offset * sceneRowHeight).setSize(scenePanelWidth, 30).setVisible(visible);
     sceneButtons.add(b);
   }
-  
-  if (scenes.size() > scenesPerPage) {
-    cp5.get(Button.class, "prevPage").show();
-    cp5.get(Button.class, "nextPage").show();
-  } else {
-    cp5.get(Button.class, "prevPage").hide();
-    cp5.get(Button.class, "nextPage").hide();
-  }
+  int pagerY = sceneListY + scenesPerPage * sceneRowHeight + 8;
+  place("prevPage", scenePanelX, pagerY, 50, 30, visible && currentPage > 0);
+  place("nextPage", scenePanelX + scenePanelWidth - 50, pagerY, 50, 30, visible && (currentPage + 1) * scenesPerPage < scenes.size());
 }
 
 public void moveSceneUp() {
@@ -1139,17 +1362,22 @@ public void controlEvent(ControlEvent e) {
     cloneChannel(int(e.getName().substring(6)));
     return;
   }
-  if (e.isGroup() && e.getName().equals("portSelector")) {
-    connectToSerial(e.getGroup().getValueLabel().getText());
-    e.getGroup().hide();
+  if (e.isController() && e.getName().startsWith("effect_")) {
+    int i = int(e.getName().substring(7));
+    effectMenuChannel = effectMenuChannel == i ? -1 : i;
+    layoutInterface();
   }
-  if (e.isGroup() && e.getName().startsWith("fx_")) {
-    int idx = int(e.getName().substring(3));
-    int m = (int) e.getGroup().getValue();
-    Channel ch = allChannels.get(idx);
-    ch.fxMode = m;
-    
-    updateChannelControls(idx);
+  if (e.isController() && e.getName().startsWith("fxChoice_")) {
+    String[] choice = split(e.getName().substring(9), '_');
+    int i = int(choice[0]);
+    allChannels.get(i).fxMode = int(choice[1]);
+    effectMenuChannel = -1;
+    updateEffectButton(i);
+    layoutInterface();
+  }
+  if (e.isController() && e.getName().startsWith("usbPort_")) {
+    int index = int(e.getName().substring(8));
+    if (index >= 0 && index < availablePorts.length) connectToSerial(availablePorts[index]);
   }
 }
 
@@ -1189,18 +1417,16 @@ void toggleRGB(int i, boolean v) {
 }
 
 void syncPinControls(int i) {
-  boolean isRGB = allChannels.get(i).isRGB;
-  String s = "_" + i;
-  if (isRGB) {
-    cp5.get(Textfield.class, "pinMono" + s).hide();
-    cp5.get(Textfield.class, "pinR" + s).show();
-    cp5.get(Textfield.class, "pinG" + s).show();
-    cp5.get(Textfield.class, "pinB" + s).show();
-  } else {
-    cp5.get(Textfield.class, "pinMono" + s).show();
-    cp5.get(Textfield.class, "pinR" + s).hide();
-    cp5.get(Textfield.class, "pinG" + s).hide();
-    cp5.get(Textfield.class, "pinB" + s).hide();
+  boolean visible = channelVisible(i) && outputsView;
+  boolean rgb = allChannels.get(i).isRGB;
+  cp5.get(Textfield.class, "pinMono_" + i).setVisible(visible && !rgb);
+  cp5.get(Textfield.class, "pinR_" + i).setVisible(visible && rgb);
+  cp5.get(Textfield.class, "pinG_" + i).setVisible(visible && rgb);
+  cp5.get(Textfield.class, "pinB_" + i).setVisible(visible && rgb);
+  String[] fields = {"pinMono_", "pinR_", "pinG_", "pinB_"};
+  for (String field : fields) {
+    Textfield input = cp5.get(Textfield.class, field + i);
+    if (!input.isVisible()) input.setFocus(false);
   }
 }
 
@@ -1241,16 +1467,16 @@ public void bpm_7(float v) { allChannels.get(7).sequencer.bpm = v; }
 public void bpm_8(float v) { allChannels.get(8).sequencer.bpm = v; }
 public void bpm_9(float v) { allChannels.get(9).sequencer.bpm = v; }
 
-public void fx_0(int v) { allChannels.get(0).fxMode = v; }
-public void fx_1(int v) { allChannels.get(1).fxMode = v; }
-public void fx_2(int v) { allChannels.get(2).fxMode = v; }
-public void fx_3(int v) { allChannels.get(3).fxMode = v; }
-public void fx_4(int v) { allChannels.get(4).fxMode = v; }
-public void fx_5(int v) { allChannels.get(5).fxMode = v; }
-public void fx_6(int v) { allChannels.get(6).fxMode = v; }
-public void fx_7(int v) { allChannels.get(7).fxMode = v; }
-public void fx_8(int v) { allChannels.get(8).fxMode = v; }
-public void fx_9(int v) { allChannels.get(9).fxMode = v; }
+public void fx_0(int v) { allChannels.get(0).fxMode = v; updateEffectButton(0); }
+public void fx_1(int v) { allChannels.get(1).fxMode = v; updateEffectButton(1); }
+public void fx_2(int v) { allChannels.get(2).fxMode = v; updateEffectButton(2); }
+public void fx_3(int v) { allChannels.get(3).fxMode = v; updateEffectButton(3); }
+public void fx_4(int v) { allChannels.get(4).fxMode = v; updateEffectButton(4); }
+public void fx_5(int v) { allChannels.get(5).fxMode = v; updateEffectButton(5); }
+public void fx_6(int v) { allChannels.get(6).fxMode = v; updateEffectButton(6); }
+public void fx_7(int v) { allChannels.get(7).fxMode = v; updateEffectButton(7); }
+public void fx_8(int v) { allChannels.get(8).fxMode = v; updateEffectButton(8); }
+public void fx_9(int v) { allChannels.get(9).fxMode = v; updateEffectButton(9); }
 
 public void fader_0(int v) { setFaderValue(0, v); }
 public void fader_1(int v) { setFaderValue(1, v); }
@@ -1371,7 +1597,7 @@ void applyBlackout(boolean sendCommand) {
     allChannels.get(i).fxMin = 0;
     allChannels.get(i).sequencer.active = false;
     cp5.get(Slider.class, "fader_" + i).setValue(0);
-    cp5.get(DropdownList.class, "fx_" + i).setValue(FX_MANUAL);
+    updateEffectButton(i);
     cp5.get(Slider.class, "freq_" + i).setValue(1.0);
     cp5.get(Slider.class, "min_" + i).setValue(0);
     cp5.get(Toggle.class, "seq_" + i).setValue(false);
