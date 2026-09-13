@@ -13,7 +13,8 @@
 - [x] Retablir le mode "blind" : programmation sans agir sur les sorties
 - [x] Valider sur materiel le sequenceur mono apres correctif : chaque nouveau pas prend le niveau du fader et la sortie mono suit l'intensite du pas
 - [x] Valider le menu deroulant FX ControlP5 : MAN / STR / FEU / PUL, sans gel de l UI
-- [ ] En ruban led RGB, il faut pouvoir atteindre un vrai blanc
+- [x] En ruban led RGB, il faut pouvoir atteindre un vrai blanc
+- [ ] rendre les steps du sequencer éditables, couleur et intensité
 - [x] Renommer "Sortie/USB" en "Sorties"
 - [ ] Préparer le support multi-carte wifi ESP32. 
 - [ ] En plus des pins, il faut pouvoir adresser une carte à une tranche
