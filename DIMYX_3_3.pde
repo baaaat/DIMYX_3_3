@@ -211,10 +211,9 @@ void layoutInterface() {
     boolean visible = channelVisible(i), live = visible && !outputsView;
     place("name_" + i, x, 88, w, 28, visible);
     place("effect_" + i, x, 120, w, 28, live);
-    boolean menu = live && effectMenuChannel == i;
-    place("rgb_" + i, x, outputsView ? 136 : 152, w, 28, visible && !menu);
-    place("seq_" + i, x, 184, w, 28, live && !menu);
-    for (int mode = 0; mode < 4; mode++) place("fxChoice_" + i + "_" + mode, x, 152 + mode * 32, w, 28, menu);
+    place("rgb_" + i, x, outputsView ? 136 : 152, w, 28, visible);
+    place("seq_" + i, x, 184, w, 28, live);
+    for (int mode = 0; mode < 4; mode++) place("fxChoice_" + i + "_" + mode, x, 152 + mode * 32, w, 28, false);
     place("freq_" + i, x, 216, w, 28, live);
     place("min_" + i, x, 248, w, 28, live);
     place("fader_" + i, x + w / 2 - 16, 284, 32, max(48, height - 492), live);
@@ -822,13 +821,13 @@ void clearChannelClipboard() {
 void updateEffectButton(int i) {
   String[] labels = {"MAN", "STR", "FEU", "PUL"};
   int mode = constrain(allChannels.get(i).fxMode, 0, 3);
-  cp5.get(Button.class, "effect_" + i).setLabel("FX  " + labels[mode] + "  v");
+  cp5.get(Button.class, "effect_" + i).setLabel("FX  " + labels[mode] + "  >");
 }
 
 void updateChannelControls(int i) {
   Channel ch = allChannels.get(i);
   boolean live = channelVisible(i) && !outputsView;
-  boolean showFX = live && effectMenuChannel != i && ch.fxMode != FX_MANUAL;
+  boolean showFX = live && ch.fxMode != FX_MANUAL;
   cp5.get(Slider.class, "freq_" + i).setVisible(showFX);
   cp5.get(Slider.class, "min_" + i).setVisible(showFX);
   cp5.get(Slider.class, "bpm_" + i).setVisible(live && ch.sequencer.active);
@@ -893,13 +892,6 @@ boolean hasSelectedStep() {
 }
 
 void mousePressed() {
-  if (effectMenuChannel >= 0) {
-    int x = channelX(effectMenuChannel);
-    if (mouseX < x || mouseX >= x + stripControlWidth || mouseY < 120 || mouseY >= 280) {
-      effectMenuChannel = -1;
-      layoutInterface();
-    }
-  }
   if (outputsView || (narrowLayout && scenesView)) return;
   for (int i = 0; i < nbChannels; i++) {
     if (!channelVisible(i)) continue;
@@ -1040,10 +1032,8 @@ void createGUI() {
   if (interfaceFont == null) interfaceFont = createFont("SansSerif", 13, true);
   cp5.setFont(interfaceFont);
   for (int i = 0; i < nbChannels; i++) {
-    capsuleButton("effect_" + i, "FX  MAN  v", color(60, 83, 109));
-    String[] effects = {"MAN", "STR", "FEU", "PUL"};
-    for (int mode = 0; mode < effects.length; mode++) capsuleButton("fxChoice_" + i + "_" + mode, effects[mode], color(74, 99, 132));
-    cp5.addToggle("rgb_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("RGB", color(0, 200, 255)));
+    capsuleButton("effect_" + i, "FX  MAN  >", color(60, 83, 109));
+cp5.addToggle("rgb_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("RGB", color(0, 200, 255)));
     cp5.addToggle("seq_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("SEQ", color(255, 200, 0)));
     capsuleButton("clone_" + i, "CLONER", color(58, 77, 102));
     capsuleSlider("freq_" + i, "FREQ", 0.1, 10, 1, color(64, 111, 153));
@@ -1364,18 +1354,12 @@ public void controlEvent(ControlEvent e) {
   }
   if (e.isController() && e.getName().startsWith("effect_")) {
     int i = int(e.getName().substring(7));
-    effectMenuChannel = effectMenuChannel == i ? -1 : i;
-    layoutInterface();
-  }
-  if (e.isController() && e.getName().startsWith("fxChoice_")) {
-    String[] choice = split(e.getName().substring(9), '_');
-    int i = int(choice[0]);
-    allChannels.get(i).fxMode = int(choice[1]);
-    effectMenuChannel = -1;
+    Channel ch = allChannels.get(i);
+    ch.fxMode = (ch.fxMode + 1) % 4;
     updateEffectButton(i);
-    layoutInterface();
-  }
-  if (e.isController() && e.getName().startsWith("usbPort_")) {
+    updateChannelControls(i);
+    return;
+  }  if (e.isController() && e.getName().startsWith("usbPort_")) {
     int index = int(e.getName().substring(8));
     if (index >= 0 && index < availablePorts.length) connectToSerial(availablePorts[index]);
   }

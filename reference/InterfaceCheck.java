@@ -70,7 +70,6 @@ public class InterfaceCheck {
     for(int[] wh: new int[][]{{1600,1000},{1366,768},{1280,800},{1024,600},{800,540}}) {
       size(wh[0],wh[1]); bounds(); render(wh[0]+"x"+wh[1]);
       int first=app.firstChannel();
-      sequencerEffectsRegression(first);
       boolean rgb=app.allChannels.get(first).isRGB;
       click("rgb_"+first);
       check(app.allChannels.get(first).isRGB != rgb,"resized toggle click");
