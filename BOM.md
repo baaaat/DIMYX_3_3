@@ -26,9 +26,9 @@ Configuration retenue :
 | Repère | Qté | Composant | Référence retenue | Caractéristiques / remarque |
 |---|---:|---|---|---|
 | U1 | 1 | Carte ESP32-C3 | ESP32-C3, carte de développement avec alimentation USB/5 V | Le modèle exact de la carte utilisée devra être ajouté dès qu'il est définitivement choisi |
-| Q1 | 1 | MOSFET canal N | **AO3400A — Alpha & Omega Semiconductor** | Canal rouge |
-| Q2 | 1 | MOSFET canal N | **AO3400A — Alpha & Omega Semiconductor** | Canal vert |
-| Q3 | 1 | MOSFET canal N | **AO3400A — Alpha & Omega Semiconductor** | Canal bleu |
+| Q1 | 1 | MOSFET canal N | FQP30N06L — onsemi / Fairchild | TO-220, canal rouge |
+| Q2 | 1 | MOSFET canal N | FQP30N06L — onsemi / Fairchild | TO-220, canal vert |
+| Q3 | 1 | MOSFET canal N | FQP30N06L — onsemi / Fairchild | TO-220, canal bleu |
 | R1 | 1 | Résistance de grille | **220 Ω, 1/4 W** | GPIO R → Gate Q1 |
 | R2 | 1 | Résistance de grille | **220 Ω, 1/4 W** | GPIO G → Gate Q2 |
 | R3 | 1 | Résistance de grille | **220 Ω, 1/4 W** | GPIO B → Gate Q3 |
@@ -44,29 +44,59 @@ Configuration retenue :
 | — | 1 | Powerbank | **5 V / 3 A recommandé** | 2 A peut suffire mais laisse moins de marge |
 | — | 1 | Câble USB | **3 A minimum** | Câble court recommandé |
 | — | 1 | Ruban RGB | **5 V, 5 m, +5V/R/G/B** | Ruban analogique, pas adressable |
-| — | 3 | Adaptateur SOT-23 → 2,54 mm | Pour AO3400A | Seulement pour prototype sur plaque |
 | — | 1 | PCB / plaque prototype | — | Pour le montage de l'étage de puissance |
 
 ---
 
 # 3. MOSFET retenu
 
-## AO3400A
+## FQP30N06L
 
 Référence principale :
 
-**AO3400A — Alpha & Omega Semiconductor**
+**FQP30N06L — onsemi / Fairchild Semiconductor**
 
 Type :
 
-- MOSFET canal N ;
-- boîtier SOT-23 ;
-- VDS max : 30 V ;
-- courant largement supérieur aux besoins du ruban ;
-- faible charge de grille ;
-- adapté à la commutation PWM.
+* MOSFET canal N ;
+* boîtier traversant **TO-220** ;
+* VDS max : **60 V** ;
+* courant maximal très largement supérieur aux besoins du ruban ;
+* MOSFET de type logic-level ;
+* adapté à la commutation PWM.
 
-Caractéristique importante :
+Le brochage du FQP30N06L, vu de face avec les inscriptions lisibles et les pattes vers le bas, est :
 
 ```text
-RDS(on) ≤ 48 mΩ avec VGS = 2,5 V
+1 = Gate
+2 = Drain
+3 = Source
+```
+
+La languette métallique du boîtier TO-220 est également reliée au **Drain**.
+
+Connexion pour chaque canal :
+
+```text
+GPIO ESP32-C3
+      |
+     220 Ω
+      |
+      +------ Gate (1)
+      |
+     10 kΩ
+      |
+     GND
+
+R / G / B du ruban ---- Drain (2)
+
+GND commun ------------ Source (3)
+```
+
+Le FQP30N06L possède notamment un RDS(on) spécifié à :
+
+```text
+VGS = 5 V
+VGS = 10 V
+```
+
