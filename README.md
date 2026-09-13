@@ -30,9 +30,29 @@ DIMYX_3_3/
     └── PROTOCOLE_SERIE.md # Contrat observé côté Processing
 ```
 
-Le sketch est conservé intégralement. La séparation entre application et documentation facilite la maintenance sans changer l’exécution. Les deux JSON sont versionnés : les sauvegardes réalisées dans l’interface peuvent donc apparaître dans `git diff`.
+Le sketch reste dans son fichier Processing principal. Les deux JSON sont versionnés : les sauvegardes réalisées dans l’interface peuvent donc apparaître dans `git diff`.
 
-## Documentation
+## Réorganiser les scènes
+
+Sélectionner une scène, puis utiliser **MONTER** ou **DESCENDRE** pour la déplacer d’une position. La sélection suit la scène, y compris lors d’un changement de page. L’ordre est sauvegardé automatiquement dans `scenes.json` et conservé au redémarrage. Aux extrémités de la liste, le déplacement impossible est sans effet. La scène en cours de lecture reste la même.
+
+## Séquenceur et effets
+
+Activer **SEQ RUN** sur une tranche pour faire défiler ses pas, puis choisir **STR**, **PUL** ou **FEU** dans le menu d’effets. **MAN** laisse les pas jouer sans modulation supplémentaire. Le BPM règle le défilement ; FREQ et MIN règlent l’effet indépendamment. Changer d’effet ne coupe pas le séquenceur et ne le redémarre pas.
+
+Pendant la séquence, l’intensité et la couleur proviennent du pas courant. L’effet module cette intensité : un pas à zéro reste éteint. Désactiver SEQ RUN restitue l’intensité manuelle et la couleur de base, en conservant l’effet choisi. REC mémorise la combinaison dans la scène.
+
+Les anciennes scènes avec `fx: 4` sont converties au chargement en mode sans effet (`fx: 0`), en conservant leur état de séquenceur `sa` et leurs pas.
+
+## Interrupteurs et clonage des tranches
+
+Les interrupteurs **RGB** et **SEQ** sont des capsules : curseur rond à gauche et couleur assombrie pour **OFF**, curseur à droite et couleur vive pour **ON**. Le texte indique également l’état.
+
+Cliquer sur **CLONER** sous la tranche source, puis sur **COLLER ICI** sous la destination. **ANNULER** sous la source abandonne la copie. Le collage remplace le niveau manuel, le mode mono/RGB, la couleur, les effets, le tempo et tous les pas par les réglages capturés au clic sur CLONER. Les pas restent indépendants ; un séquenceur actif repart au premier pas. Le nom et les affectations de sorties de la destination sont conservés.
+
+La copie et le collage attendent la fin d’une transition de scène. Le collage agit immédiatement sur la tranche ; utiliser **REC** pour conserver le résultat dans une scène. Aucune scène n’est enregistrée automatiquement par le clonage.
+
+## Documentation détaillée
 
 - [Architecture et repères dans le code](docs/ARCHITECTURE.md)
 - [Données persistantes](docs/DONNEES.md)

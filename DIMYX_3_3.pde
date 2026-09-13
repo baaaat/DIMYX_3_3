@@ -1,4 +1,4 @@
-dasn la import controlP5.*;
+import controlP5.*;
 import processing.serial.*;
 
 ControlP5 cp5;
@@ -44,6 +44,39 @@ long transitionStartTime = 0;
 int transitionDuration = 0;
 ChannelState[] startStates;
 ChannelState[] targetStates;
+ChannelState channelClipboard = null;
+int cloneSourceIndex = -1;
+String cloneStatus = "CLONER : choisir une tranche source";
+
+class ChipView implements ControllerView<Toggle> {
+  String label;
+  int accent;
+
+  ChipView(String label, int accent) {
+    this.label = label;
+    this.accent = accent;
+  }
+
+  public void display(PGraphics g, Toggle toggle) {
+    boolean on = toggle.getState();
+    float w = toggle.getWidth(), h = toggle.getHeight();
+    g.pushStyle();
+    g.rectMode(CORNER);
+    g.ellipseMode(CENTER);
+    g.stroke(toggle.isMouseOver() ? color(255) : lerpColor(accent, color(30), 0.4));
+    g.strokeWeight(1);
+    g.fill(on ? accent : lerpColor(accent, color(20), 0.78));
+    g.rect(0, 0, w, h, h / 2);
+    g.noStroke();
+    g.fill(on ? color(255) : color(190));
+    g.ellipse(on ? w - h / 2 : h / 2, h / 2, h - 6, h - 6);
+    g.fill(on ? color(15, 25, 30) : color(245));
+    g.textAlign(CENTER, CENTER);
+    g.textSize(11);
+    g.text(label + (on ? " ON" : " OFF"), on ? (w - h) / 2 : (w + h) / 2, h / 2 - 1);
+    g.popStyle();
+  }
+}
 
 class Step {
   int intensity;
@@ -217,7 +250,7 @@ final int FX_MANUAL = 0;
 final int FX_STROBE = 1;
 final int FX_FIRE = 2;
 final int FX_PULSE = 3;
-final int FX_SEQUENCER = 4;
+final int LEGACY_FX_SEQUENCER = 4;
 
 void setup() {
   size(1600, 1000);
@@ -291,6 +324,8 @@ void draw() {
   text("● " + (serialConnected ? "CONNECTE" : "DECONNECTE"), 20, 60);
   fill(220);
   text("SCENE : " + getCurrentSceneName(), 180, 60);
+  textSize(12);
+  text(cloneStatus, 510, 60);
   
   for (int i = 0; i < nbChannels; i++) {
     int x = 30 + i * 115;
@@ -321,9 +356,7 @@ void draw() {
         float eff = 1.0;
         float minN = ch.fxMin / 4095.0;
         
-        if (ch.fxMode == FX_SEQUENCER) {
-          eff = ch.sequencer.getCurrentIntensity() / 4095.0;
-        } else if (ch.fxMode == FX_STROBE) {
+        if (ch.fxMode == FX_STROBE) {
           eff = (now % (long)(1000.0 / ch.fxFreq) < (500.0 / ch.fxFreq)) ? 1.0 : minN;
         } else if (ch.fxMode == FX_FIRE) {
           eff = lerp(minN, 1.0, noise(i * 100, frameCount * 0.01 * ch.fxFreq));
@@ -331,11 +364,11 @@ void draw() {
           eff = lerp(minN, 1.0, (sin(frameCount * 0.05 * ch.fxFreq + i) + 1) / 2.0);
         }
         
-        float master = ch.manualVal / 4095.0;
-        float fin = (ch.fxMode == FX_SEQUENCER) ? eff : eff * master;
+        float master = (ch.sequencer.active ? ch.sequencer.getCurrentIntensity() : ch.manualVal) / 4095.0;
+        float fin = eff * master;
         
         if (ch.isRGB) {
-          color col = (ch.fxMode == FX_SEQUENCER) ? ch.sequencer.getCurrentColor() : ch.baseColor;
+          color col = (ch.sequencer.active) ? ch.sequencer.getCurrentColor() : ch.baseColor;
           int vr = int((red(col) / 255.0) * 4095 * fin);
           int vg = int((green(col) / 255.0) * 4095 * fin);
           int vb = int((blue(col) / 255.0) * 4095 * fin);
@@ -436,6 +469,8 @@ void drawStepSequencer(int x, int y, int i) {
 }
 
 void updateGUIFromChannels() {
+  // Une synchronisation visuelle ne doit pas editer un pas ni relancer ses callbacks.
+  cp5.setBroadcast(false);
   for (int i = 0; i < nbChannels; i++) {
     Channel ch = allChannels.get(i);
     cp5.get(Slider.class, "fader_" + i).setValue(ch.manualVal);
@@ -445,7 +480,7 @@ void updateGUIFromChannels() {
     cp5.get(Slider.class, "freq_" + i).setValue(ch.fxFreq);
     cp5.get(Slider.class, "min_" + i).setValue(ch.fxMin);
     cp5.get(Toggle.class, "rgb_" + i).setValue(ch.isRGB ? 1 : 0);
-    cp5.get(Toggle.class, "seq_" + i).setValue(ch.sequencer.active);
+    cp5.get(Toggle.class, "seq_" + i).setBroadcast(false).setValue(ch.sequencer.active).setBroadcast(true);
     cp5.get(Slider.class, "bpm_" + i).setValue(ch.sequencer.bpm);
     cp5.get(Textfield.class, "pinMono_" + i).setText(str(ch.pinMono));
     cp5.get(Textfield.class, "pinR_" + i).setText(str(ch.pinR));
@@ -454,6 +489,51 @@ void updateGUIFromChannels() {
     cp5.get(Textfield.class, "name_" + i).setText(ch.name);
     syncPinControls(i);
   }
+  cp5.setBroadcast(true);
+}
+
+void cloneChannel(int index) {
+  if (index < 0 || index >= nbChannels) return;
+  if (index == cloneSourceIndex) {
+    clearChannelClipboard();
+    return;
+  }
+  if (isTransitioning) {
+    cloneStatus = "CLONER : attendre la fin de la transition";
+    return;
+  }
+  if (channelClipboard == null) {
+    channelClipboard = new ChannelState(allChannels.get(index));
+    cloneSourceIndex = index;
+    cloneStatus = "Tranche " + (index + 1) + " copiee : choisir COLLER (remplace la destination)";
+    for (int i = 0; i < nbChannels; i++) {
+      cp5.get(Button.class, "clone_" + i).setLabel(i == index ? "ANNULER" : "COLLER ICI");
+    }
+    return;
+  }
+  Channel destination = allChannels.get(index);
+  channelClipboard.applyTo(destination);
+  destination.sequencer.currentStep = 0;
+  destination.sequencer.lastStepTime = millis();
+  if (selectedStepChannel == index) {
+    selectedStepChannel = -1;
+    selectedStepIndex = -1;
+    stepEditMode = false;
+  }
+  lastClickedStepChannel = -1;
+  lastClickedStepIndex = -1;
+  destination.value = destination.valR = destination.valG = destination.valB = -1;
+  updateGUIFromChannels();
+  String message = "Tranche " + (cloneSourceIndex + 1) + " clonee vers " + (index + 1);
+  clearChannelClipboard();
+  cloneStatus = message;
+}
+
+void clearChannelClipboard() {
+  channelClipboard = null;
+  cloneSourceIndex = -1;
+  cloneStatus = "CLONER : choisir une tranche source";
+  for (int i = 0; i < nbChannels; i++) cp5.get(Button.class, "clone_" + i).setLabel("CLONER");
 }
 
 void updateChannelControls(int i) {
@@ -461,7 +541,7 @@ void updateChannelControls(int i) {
   boolean showFX = ch.fxMode == FX_STROBE || ch.fxMode == FX_FIRE || ch.fxMode == FX_PULSE;
   cp5.get(Slider.class, "freq_" + i).setVisible(showFX);
   cp5.get(Slider.class, "min_" + i).setVisible(showFX);
-  cp5.get(Slider.class, "bpm_" + i).setVisible(ch.fxMode == FX_SEQUENCER);
+  cp5.get(Slider.class, "bpm_" + i).setVisible(ch.sequencer.active);
 }
 
 String getCurrentSceneName() {
@@ -681,15 +761,17 @@ void resumeLastScene() {
 }
 
 void createGUI() {
+  cp5.setBroadcast(false);
   for (int i = 0; i < nbChannels; i++) {
     int x = 30 + i * 115;
     
      cp5.addDropdownList("fx_" + i).setPosition(x, 100).setSize(80, 120).setItemHeight(20).setBarHeight(20)
-       .addItem("MAN", FX_MANUAL).addItem("STR", FX_STROBE).addItem("FEU", FX_FIRE).addItem("PUL", FX_PULSE).addItem("SEQ", FX_SEQUENCER).setValue(FX_MANUAL).setOpen(false);
+       .addItem("MAN", FX_MANUAL).addItem("STR", FX_STROBE).addItem("FEU", FX_FIRE).addItem("PUL", FX_PULSE).setValue(FX_MANUAL).setOpen(false);
     
-    cp5.addToggle("rgb_" + i).setPosition(x + 25, 230).setSize(50, 20).setValue(false).setLabel("RGB").setMode(ControlP5.SWITCH).setColorActive(color(0, 200, 255));
+    cp5.addToggle("rgb_" + i).setPosition(x, 226).setSize(100, 24).setValue(false).setLabel("").setView(new ChipView("RGB", color(0, 200, 255)));
     
-    cp5.addToggle("seq_" + i).setPosition(x + 25, 255).setSize(50, 20).setValue(false).setLabel("RUN").setMode(ControlP5.SWITCH).setColorActive(color(255, 200, 0));
+    cp5.addToggle("seq_" + i).setPosition(x, 255).setSize(100, 24).setValue(false).setLabel("").setView(new ChipView("SEQ", color(255, 200, 0)));
+    cp5.addButton("clone_" + i).setPosition(x, 970).setSize(100, 24).setLabel("CLONER");
     
     cp5.addSlider("freq_" + i).setPosition(x, 285).setSize(100, 20).setRange(0.1, 10.0).setValue(1.0).setDecimalPrecision(1).setLabel("FREQ");
     
@@ -722,6 +804,9 @@ void createGUI() {
   
   cp5.addButton("deleteScene").setPosition(px + 195, 120).setSize(65, 40).setColorBackground(color(150, 50, 50)).setLabel("DEL");
   
+  cp5.addButton("moveSceneUp").setPosition(px, 170).setSize(125, 25).setLabel("MONTER");
+  cp5.addButton("moveSceneDown").setPosition(px + 135, 170).setSize(125, 25).setLabel("DESCENDRE");
+
   cp5.addButton("prevPage").setPosition(px, 650).setSize(40, 30).setLabel("<").hide();
   
   cp5.addButton("nextPage").setPosition(px + 220, 650).setSize(40, 30).setLabel(">").hide();
@@ -735,7 +820,7 @@ void createGUI() {
   cp5.addButton("blackout").setPosition(px, 900).setSize(260, 60).setColorBackground(color(200, 0, 0)).setLabel("BLACKOUT");
   
   cp5.addScrollableList("portSelector").setPosition(px, 700).setSize(260, 180).setBarHeight(20).setItemHeight(20).addItems(Serial.list()).setType(ScrollableList.LIST).hide();
-
+  cp5.setBroadcast(true);
 }
 
 void refreshSceneButtons() {
@@ -787,6 +872,36 @@ void refreshSceneButtons() {
     cp5.get(Button.class, "prevPage").hide();
     cp5.get(Button.class, "nextPage").hide();
   }
+}
+
+public void moveSceneUp() {
+  moveSelectedScene(-1);
+}
+
+public void moveSceneDown() {
+  moveSelectedScene(1);
+}
+
+void moveSelectedScene(int direction) {
+  int sourceIndex = selectedSceneIndex;
+  int destinationIndex = sourceIndex + direction;
+  if (sourceIndex < 0 || sourceIndex >= scenes.size() || destinationIndex < 0 || destinationIndex >= scenes.size()) return;
+  if (direction != -1 && direction != 1) return;
+
+  Scene moved = scenes.get(sourceIndex);
+  scenes.set(sourceIndex, scenes.get(destinationIndex));
+  scenes.set(destinationIndex, moved);
+
+  // Keep playback and reconnection attached to the same scene objects.
+  if (activeSceneIndex == sourceIndex) activeSceneIndex = destinationIndex;
+  else if (activeSceneIndex == destinationIndex) activeSceneIndex = sourceIndex;
+  if (sceneToResumeIndex == sourceIndex) sceneToResumeIndex = destinationIndex;
+  else if (sceneToResumeIndex == destinationIndex) sceneToResumeIndex = sourceIndex;
+
+  selectedSceneIndex = destinationIndex;
+  currentPage = destinationIndex / scenesPerPage;
+  refreshSceneButtons();
+  saveScenes();
 }
 
 public void newScene() {
@@ -939,6 +1054,8 @@ void loadScenes() {
         ChannelState cs = new ChannelState();
         cs.manualVal = c.getInt("m");
         cs.fxMode = c.getInt("fx");
+        // Old SEQ scenes now use the independent sequencer without an effect.
+        if (cs.fxMode == LEGACY_FX_SEQUENCER) cs.fxMode = FX_MANUAL;
         cs.fxFreq = c.getFloat("f");
         cs.fxMin = c.getInt("min");
         cs.isRGB = c.getBoolean("rgb");
@@ -1018,6 +1135,10 @@ void saveChannelConfig() {
 }
 
 public void controlEvent(ControlEvent e) {
+  if (e.isController() && e.getName().startsWith("clone_")) {
+    cloneChannel(int(e.getName().substring(6)));
+    return;
+  }
   if (e.isGroup() && e.getName().equals("portSelector")) {
     connectToSerial(e.getGroup().getValueLabel().getText());
     e.getGroup().hide();
@@ -1027,21 +1148,6 @@ public void controlEvent(ControlEvent e) {
     int m = (int) e.getGroup().getValue();
     Channel ch = allChannels.get(idx);
     ch.fxMode = m;
-    
-    // Activer automatiquement le sequencer quand on passe en mode SEQ
-    if (m == FX_SEQUENCER) {
-      if (ch.sequencer.steps.isEmpty()) {
-        ch.sequencer.steps.add(new Step(4095, red(ch.baseColor), green(ch.baseColor), blue(ch.baseColor)));
-      }
-      ch.sequencer.currentStep = 0;
-      ch.sequencer.lastStepTime = millis();
-      ch.sequencer.active = true;
-      cp5.get(Toggle.class, "seq_" + idx).setValue(true);
-    } else {
-      ch.sequencer.active = false;
-      cp5.get(Toggle.class, "seq_" + idx).setValue(false);
-      if (stepEditMode && selectedStepChannel == idx) stepEditMode = false;
-    }
     
     updateChannelControls(idx);
   }
@@ -1110,14 +1216,17 @@ public void seq_8(boolean v) { toggleSeq(8, v); }
 public void seq_9(boolean v) { toggleSeq(9, v); }
 
 void toggleSeq(int i, boolean v) {
-  allChannels.get(i).sequencer.active = v;
-  
-  // Si on desactive le sequencer, on repasse en mode MANUEL
-  if (!v && allChannels.get(i).fxMode == FX_SEQUENCER) {
-    allChannels.get(i).fxMode = FX_MANUAL;
-    cp5.get(DropdownList.class, "fx_" + i).setValue(FX_MANUAL);
+  Channel ch = allChannels.get(i);
+  if (v && !ch.sequencer.active) {
+    if (ch.sequencer.steps.isEmpty()) {
+      ch.sequencer.steps.add(new Step(4095, red(ch.baseColor), green(ch.baseColor), blue(ch.baseColor)));
+    }
+    ch.sequencer.currentStep = 0;
+    ch.sequencer.lastStepTime = millis();
   }
-  
+  ch.sequencer.active = v;
+  if (!v && stepEditMode && selectedStepChannel == i) stepEditMode = false;
+  updateChannelControls(i);
   println("Tranche " + i + " : Sequenceur " + (v ? "ACTIVE" : "DESACTIVE"));
 }
 

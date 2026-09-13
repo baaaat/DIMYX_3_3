@@ -49,5 +49,10 @@ Travailler sur une copie des JSON avant les essais qui enregistrent ou supprimen
 4. Vérifier l’ajout et l’édition des pas, l’activation du séquenceur et le tempo.
 5. Redémarrer et vérifier la persistance des scènes, des noms et des sorties.
 6. Avec le matériel compatible, vérifier la détection, les commandes de sortie, le blackout, la déconnexion et la reprise de scène.
+7. Déplacer une scène avec MONTER/DESCENDRE : tester sans sélection, avec une seule scène, aux extrémités et entre les positions 8 et 9. Vérifier que la sélection suit la page, que la scène active (et celle à reprendre après déconnexion) reste la même et que l’ordre persiste au redémarrage. Tester aussi pendant une transition.
 
 Il n’existe pas de suite de tests automatisée fournie. Une vérification documentaire ne constitue pas une validation du fonctionnement matériel.
+
+Pour l’interface et le clonage : vérifier les capsules RGB/SEQ sur les 10 tranches (OFF sombre à gauche, ON vif à droite), au clic, au rappel de scène et au blackout. Cloner une tranche mono puis RGB avec effets et plusieurs pas vers une destination déjà remplie ; vérifier ses niveaux, sa couleur, son tempo, son redémarrage au premier pas et la conservation de son nom et de ses sorties. Modifier un pas copié et vérifier que la source reste identique. Tester ANNULER, une source sans pas, une destination en édition de pas et le refus pendant une transition. Enregistrer avec REC puis rappeler et redémarrer pour vérifier la persistance.
+
+Pour la combinaison séquenceur/effets : créer deux pas de couleurs et intensités différentes, activer SEQ RUN puis essayer STR, PUL et FEU. Vérifier que les pas continuent sans redémarrage au changement d’effet, que BPM et FREQ restent accessibles ensemble et qu’un pas nul reste éteint. Arrêter SEQ RUN et vérifier le retour au niveau manuel avec le même effet. Enregistrer/rappeler la scène, tester une transition et charger une ancienne scène `fx: 4`. Vérifier aussi le blackout avec SEQ RUN et un effet actifs.

@@ -23,17 +23,17 @@ Les noms et sorties sont sauvegardés lors de leurs modifications. Le mode RGB a
 | Clé d’un état | Sens |
 | --- | --- |
 | `m` | Valeur manuelle, échelle 0–4095 |
-| `fx` | Mode : 0 manuel, 1 strobe, 2 feu, 3 pulsation, 4 séquenceur |
+| `fx` | Effet : 0 sans modulation, 1 strobe, 2 feu, 3 pulsation ; ancien 4 converti en 0 au chargement |
 | `f` | Paramètre de fréquence de l’effet |
 | `min` | Minimum de l’effet, échelle 0–4095 |
 | `rgb` | Activation du mode RGB |
 | `cr`, `cg`, `cb` | Couleur de base, composantes 0–255 |
-| `sa` | Activation du séquenceur |
+| `sa` | Activation du séquenceur, indépendante de `fx` |
 | `bpm` | Tempo du séquenceur |
 | `steps` | Liste de pas : `i` (intensité 0–4095), `r`, `g`, `b` (0–255) |
 
 Ces échelles décrivent l’usage du code ; elles ne constituent pas un schéma de validation automatique des fichiers. L’interface prévoit au maximum 10 pas, mais le chargeur parcourt tous les pas présents dans le JSON.
 
-La création, l’enregistrement et la suppression d’une scène réécrivent la liste des scènes. Les modifications de tranches doivent être capturées dans une scène pour y être conservées. La durée de transition, le port série et la sélection courante ne sont pas enregistrés dans ces formats.
+La création, l’enregistrement, le déplacement et la suppression d’une scène réécrivent la liste des scènes. L’ordre des objets dans le tableau JSON est l’ordre d’affichage. Les modifications de tranches doivent être capturées dans une scène pour y être conservées. La durée de transition, le port série et la sélection courante ne sont pas enregistrés dans ces formats.
 
 Il n’existe pas de champ de version de format. `loadScenes` intercepte globalement les erreurs et affiche « Aucun fichier », y compris pour certaines erreurs de contenu ; ce message ne prouve donc pas l’absence du fichier. Sauvegarder les données avant toute modification manuelle.

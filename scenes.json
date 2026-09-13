@@ -1,297 +1,160 @@
-[
-  {
-    "name": "reve de bernays",
-    "states": [
-      {
-        "fx": 3,
-        "min": 0,
-        "cg": 47,
-        "f": 1,
-        "rgb": true,
-        "m": 3628,
-        "steps": [
-          {
-            "r": 255,
-            "b": 121,
-            "g": 41,
-            "i": 2048
-          },
-          {
-            "r": 107,
-            "b": 71,
-            "g": 255,
-            "i": 2048
-          },
-          {
-            "r": 255,
-            "b": 121,
-            "g": 41,
-            "i": 2048
-          },
-          {
-            "r": 255,
-            "b": 202,
-            "g": 106,
-            "i": 3628
-          }
-        ],
-        "sa": false,
-        "bpm": 60,
-        "cr": 59,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      }
-    ]
-  },
-  {
-    "name": "Scene 2",
-    "states": [
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": true,
-        "m": 1251,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 36,
-        "cb": 43
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      },
-      {
-        "fx": 0,
-        "min": 0,
-        "cg": 255,
-        "f": 1,
-        "rgb": false,
-        "m": 0,
-        "steps": [],
-        "sa": false,
-        "bpm": 120,
-        "cr": 255,
-        "cb": 255
-      }
-    ]
-  }
-]
+[{
+  "name": "Scene 1",
+  "states": [
+    {
+      "fx": 3,
+      "min": 0,
+      "cg": 47,
+      "f": 1,
+      "rgb": true,
+      "m": 3628,
+      "steps": [
+        {
+          "r": 255,
+          "b": 121,
+          "g": 41,
+          "i": 2048
+        },
+        {
+          "r": 107,
+          "b": 71,
+          "g": 255,
+          "i": 2048
+        },
+        {
+          "r": 255,
+          "b": 121,
+          "g": 41,
+          "i": 2048
+        },
+        {
+          "r": 255,
+          "b": 202,
+          "g": 106,
+          "i": 3628
+        }
+      ],
+      "sa": false,
+      "bpm": 60,
+      "cr": 59,
+      "cb": 255
+    },
+    {
+      "fx": 0,
+      "min": 0,
+      "cg": 255,
+      "f": 1,
+      "rgb": false,
+      "m": 0,
+      "steps": [],
+      "sa": false,
+      "bpm": 120,
+      "cr": 255,
+      "cb": 255
+    },
+    {
+      "fx": 0,
+      "min": 0,
+      "cg": 255,
+      "f": 1,
+      "rgb": false,
+      "m": 0,
+      "steps": [],
+      "sa": false,
+      "bpm": 120,
+      "cr": 255,
+      "cb": 255
+    },
+    {
+      "fx": 0,
+      "min": 0,
+      "cg": 255,
+      "f": 1,
+      "rgb": false,
+      "m": 0,
+      "steps": [],
+      "sa": false,
+      "bpm": 120,
+      "cr": 255,
+      "cb": 255
+    },
+    {
+      "fx": 0,
+      "min": 0,
+      "cg": 255,
+      "f": 1,
+      "rgb": false,
+      "m": 0,
+      "steps": [],
+      "sa": false,
+      "bpm": 120,
+      "cr": 255,
+      "cb": 255
+    },
+    {
+      "fx": 0,
+      "min": 0,
+      "cg": 255,
+      "f": 1,
+      "rgb": false,
+      "m": 0,
+      "steps": [],
+      "sa": false,
+      "bpm": 120,
+      "cr": 255,
+      "cb": 255
+    },
+    {
+      "fx": 0,
+      "min": 0,
+      "cg": 255,
+      "f": 1,
+      "rgb": false,
+      "m": 0,
+      "steps": [],
+      "sa": false,
+      "bpm": 120,
+      "cr": 255,
+      "cb": 255
+    },
+    {
+      "fx": 0,
+      "min": 0,
+      "cg": 255,
+      "f": 1,
+      "rgb": false,
+      "m": 0,
+      "steps": [],
+      "sa": false,
+      "bpm": 120,
+      "cr": 255,
+      "cb": 255
+    },
+    {
+      "fx": 0,
+      "min": 0,
+      "cg": 255,
+      "f": 1,
+      "rgb": false,
+      "m": 0,
+      "steps": [],
+      "sa": false,
+      "bpm": 120,
+      "cr": 255,
+      "cb": 255
+    },
+    {
+      "fx": 0,
+      "min": 0,
+      "cg": 255,
+      "f": 1,
+      "rgb": false,
+      "m": 0,
+      "steps": [],
+      "sa": false,
+      "bpm": 120,
+      "cr": 255,
+      "cb": 255
+    }
+  ]
+}]

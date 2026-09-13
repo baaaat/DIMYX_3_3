@@ -2,7 +2,7 @@
 
 ## Choix d’organisation
 
-Le code existant reste dans [`DIMYX_3_3.pde`](../DIMYX_3_3.pde), sans modification de contenu. Les JSON restent à la racine parce que les fonctions de persistance utilisent leurs noms directement. Aucun dossier `src/` ou déplacement vers `data/` n’est introduit.
+Le code reste dans [`DIMYX_3_3.pde`](../DIMYX_3_3.pde). Les JSON restent à la racine parce que les fonctions de persistance utilisent leurs noms directement. Aucun dossier `src/` ou déplacement vers `data/` n’est introduit.
 
 ## Cartographie
 
@@ -44,9 +44,17 @@ flowchart TD
 
 Les contrôles modifient les objets `Channel`. Une `Scene` capture des `ChannelState`, incluant les pas de séquenceur. Les transitions interpolent les valeurs numériques ; modes, booléens et liste de pas basculent à mi-transition. Le séquenceur avance avec une durée de pas de `60000 / bpm / 4` millisecondes.
 
-Les modes sont `0` manuel, `1` stroboscope, `2` feu, `3` pulsation et `4` séquenceur. Le mode séquenceur utilise directement l’intensité du pas pour calculer la sortie ; les autres effets sont multipliés par le fader manuel.
+Les effets sont `0` sans modulation (MAN), `1` stroboscope, `2` feu et `3` pulsation. `sequencer.active` choisit indépendamment la source : intensité/couleur du pas courant ou fader/couleur manuels. La sortie est l’intensité source multipliée par le facteur d’effet. Le minimum conserve son calcul existant (`fxMin / 4095`) comme plancher du facteur ; il ne rallume pas un pas nul.
+
+`toggleSeq` initialise le premier pas si nécessaire et redémarre au premier pas lors d’une activation. Le choix d’effet ne modifie plus le séquenceur. La synchronisation du bouton SEQ RUN depuis les scènes désactive temporairement ses événements pour ne pas redémarrer la lecture. Le code historique `fx: 4` est converti en `FX_MANUAL` au chargement, sans modifier `sa` ni les pas.
 
 ## Points de maintenance
+
+`ChipView` personnalise le rendu des Toggle ControlP5 RGB/SEQ sans changer leurs callbacks. `cloneChannel` capture un `ChannelState`, puis l’applique à la destination avec copie indépendante des pas. Il remet son index de lecture à zéro, invalide son cache de sortie et quitte l’édition de pas si elle concerne la destination. Les noms et pins ne font pas partie de `ChannelState`. Le clonage est refusé pendant une transition pour éviter que celle-ci écrase le collage. `clearChannelClipboard` annule ou termine l’opération.
+
+`createGUI` et `updateGUIFromChannels` suspendent la diffusion des événements ControlP5 pendant la construction ou la synchronisation : les callbacks ne doivent pas accéder à des contrôles encore absents, modifier les données affichées ou éditer un pas sélectionné.
+
+`moveSceneUp` et `moveSceneDown` appellent `moveSelectedScene` pour échanger la scène sélectionnée avec sa voisine. Les indices de lecture et de reprise après déconnexion suivent les mêmes objets scène. La sélection et la page sont actualisées, puis `saveScenes` persiste l’ordre. Les états de sortie et les cibles de transition ne sont pas modifiés par ce déplacement.
 
 Le nombre de tranches est global, mais les callbacks ControlP5 sont explicitement déclinés de `0` à `9`. Modifier seulement `nbChannels` ne suffit donc pas à généraliser la console.
 

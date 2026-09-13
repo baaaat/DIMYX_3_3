@@ -8,3 +8,12 @@
 - Ne pas inventer de version de dépendance, de firmware ou de modèle de carte.
 - Vérifier les différences Git et les liens documentaires. Pour une tâche documentaire, vérifier que les fichiers applicatifs restent identiques.
 - Pour une évolution fonctionnelle, appliquer la validation manuelle de `CONTRIBUTING.md` et indiquer les vérifications qui n’ont pas pu être réalisées.
+
+
+Après chaque modification du projet :
+
+- Mettre à jour TODO.md si une tâche est terminée.
+- Mettre à jour HARDWARE.md si le matériel ou le pinout change.
+- Mettre à jour README.md si une fonction importante est ajoutée.
+- Maintenir la documentation cohérente avec le code.
+- Ne jamais modifier AGENTS.md sans autorisation explicite de l'utilisateur.
