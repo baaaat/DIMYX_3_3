@@ -9,5 +9,9 @@
 - [x] Adapter la fenêtre aux petits écrans avec pagination des tranches, vues scènes/sorties/USB et blackout permanent.
 - [x] Ajouter des tests de compilation, de disposition et d’interactions sur cinq résolutions.
 - [ ] Valider manuellement l’interface, les scènes et les sorties matérielles selon CONTRIBUTING.md.
+- [ ] Supprimer le chip rgb on/off sur la vue console, il doit etre visible uniquement en vue sortie/USB
+- [ ] Retablir le mode "blind" : programmation des tranches à l'aveugle, sans agir sur les sorties
+- [ ] Le sequenceur doit aussi agir sur le mode mono. Dans ce cas, seule l'intensité varie.
+- [ ] Renommer "Sortie/USB" en "Sorties"
 - [ ] Préparer le support multi-carte wifi ESP32. 
 - [ ] En plus des pins, il faut pouvoir adresser une carte à une tranche
