@@ -55,6 +55,8 @@ int scenePanelX = 1200, scenePanelWidth = 260;
 int sceneListY = 244, sceneRowHeight = 38;
 boolean outputsView = false, scenesView = false, narrowLayout = false;
 boolean blindActive = false;
+boolean whiteBalanceDirty = false;
+long whiteBalanceSaveAt = 0;
 final int stepSize = 22, stepGap = 4;
 PFont interfaceFont;
 String[] availablePorts = new String[0];
@@ -235,6 +237,10 @@ void layoutInterface() {
     place("pinR_" + i, x, 210, w, 32, visible && outputsView);
     place("pinG_" + i, x, 278, w, 32, visible && outputsView);
     place("pinB_" + i, x, 346, w, 32, visible && outputsView);
+    boolean showWhiteBalance = visible && outputsView && allChannels.get(i).isRGB;
+    place("whiteR_" + i, x, 402, w, 28, showWhiteBalance);
+    place("whiteG_" + i, x, 434, w, 28, showWhiteBalance);
+    place("whiteB_" + i, x, 466, w, 28, showWhiteBalance);
     updateChannelControls(i);
     syncPinControls(i);
   }
@@ -325,7 +331,8 @@ void drawConsoleInterface() {
         text("SORTIE VERTE", x, 267);
         text("SORTIE BLEUE", x, 335);
       }
-      text("Valider avec Entree", x, 410);
+      if (allChannels.get(i).isRGB) text("BALANCE BLANC", x, 396);
+      text("Valider avec Entree", x, height - 22);
       continue;
     }
     Channel ch = allChannels.get(i);
@@ -527,6 +534,7 @@ class Channel {
   color baseColor;
   int valR, valG, valB, value, manualVal, fxMode, fxMin;
   float fxFreq;
+  float whiteBalanceR, whiteBalanceG, whiteBalanceB;
   StepSequencer sequencer;
   
   Channel(String n, int i) {
@@ -546,6 +554,9 @@ class Channel {
     fxMode = 0;
     fxMin = 0;
     fxFreq = 1.0;
+    whiteBalanceR = 1.0;
+    whiteBalanceG = 1.0;
+    whiteBalanceB = 1.0;
     sequencer = new StepSequencer();
   }
 }
@@ -573,6 +584,10 @@ void invalidateChannelOutputCache(Channel ch) {
   ch.value = -1;
 }
 
+void markWhiteBalanceDirty() {
+  whiteBalanceDirty = true;
+  whiteBalanceSaveAt = millis() + 400;
+}
 boolean physicalOutputEnabled() {
   return !blindActive;
 }
@@ -622,6 +637,10 @@ void draw() {
     layoutInterface();
   }
   long now = millis();
+  if (whiteBalanceDirty && now >= whiteBalanceSaveAt) {
+    whiteBalanceDirty = false;
+    saveChannelConfig();
+  }
   pollSerialResponses();
   
   if (serialConnected && watchdogArmed && now - lastSerialResponseTime > connectionTimeout) {
@@ -686,9 +705,16 @@ void draw() {
         
         if (ch.isRGB) {
           color col = (ch.sequencer.active) ? ch.sequencer.getCurrentColor() : ch.baseColor;
-          int vr = int((red(col) / 255.0) * 4095 * fin);
-          int vg = int((green(col) / 255.0) * 4095 * fin);
-          int vb = int((blue(col) / 255.0) * 4095 * fin);
+          float nr = red(col) / 255.0;
+          float ng = green(col) / 255.0;
+          float nb = blue(col) / 255.0;
+          float whitePart = min(nr, min(ng, nb));
+          nr = constrain((nr - whitePart) + whitePart * ch.whiteBalanceR, 0, 1);
+          ng = constrain((ng - whitePart) + whitePart * ch.whiteBalanceG, 0, 1);
+          nb = constrain((nb - whitePart) + whitePart * ch.whiteBalanceB, 0, 1);
+          int vr = int(nr * 4095 * fin);
+          int vg = int(ng * 4095 * fin);
+          int vb = int(nb * 4095 * fin);
           
           if (ch.valR != vr) {
             myPort.write("P," + ch.pinR + "," + vr + "\n");
@@ -800,6 +826,9 @@ void updateGUIFromChannels() {
     cp5.get(Toggle.class, "rgb_" + i).setValue(ch.isRGB ? 1 : 0);
     cp5.get(Toggle.class, "seq_" + i).setBroadcast(false).setValue(ch.sequencer.active).setBroadcast(true);
     cp5.get(Slider.class, "bpm_" + i).setValue(ch.sequencer.bpm);
+    cp5.get(Slider.class, "whiteR_" + i).setValue(ch.whiteBalanceR * 100.0);
+    cp5.get(Slider.class, "whiteG_" + i).setValue(ch.whiteBalanceG * 100.0);
+    cp5.get(Slider.class, "whiteB_" + i).setValue(ch.whiteBalanceB * 100.0);
     cp5.get(Textfield.class, "pinMono_" + i).setText(str(ch.pinMono));
     cp5.get(Textfield.class, "pinR_" + i).setText(str(ch.pinR));
     cp5.get(Textfield.class, "pinG_" + i).setText(str(ch.pinG));
@@ -878,16 +907,25 @@ String getCurrentSceneName() {
 }
 
 void drawHSVWheel(float cx, float cy, float rad, color sel) {
+  float whiteRadius = 5.0;
   noStroke();
-  for (float r = 0; r < rad; r += 1) {
+
+  for (float r = whiteRadius; r < rad; r += 1) {
     for (float a = 0; a < 360; a += 3) {
       float radA = radians(a);
       float x = cx + r * cos(radA);
       float y = cy + r * sin(radA);
-      fill(hsvToRgb(a / 360.0, r / rad, 1.0));
+      float saturation = constrain((r - whiteRadius) / (rad - whiteRadius), 0, 1);
+      fill(hsvToRgb(a / 360.0, saturation, 1.0));
       rect(x, y, 2, 2);
     }
   }
+
+  fill(255);
+  stroke(45, 55, 65);
+  strokeWeight(1);
+  ellipse(cx, cy, whiteRadius * 2, whiteRadius * 2);
+
   fill(sel);
   stroke(255);
   strokeWeight(2);
@@ -936,16 +974,23 @@ void mousePressed() {
     if (!channelVisible(i)) continue;
     Channel ch = allChannels.get(i);
     float cx = channelX(i) + stripControlWidth / 2, cy = wheelY();
-    if (mouseButton == LEFT && ch.isRGB && dist(mouseX, mouseY, cx, cy) < 18) {
+    float wheelDistance = dist(mouseX, mouseY, cx, cy);
+    if (mouseButton == LEFT && ch.isRGB && wheelDistance < 18) {
       float a = atan2(mouseY - cy, mouseX - cx);
       if (a < 0) a += TWO_PI;
-      color selectedColor = hsvToRgb(a / TWO_PI, dist(mouseX, mouseY, cx, cy) / 18, 1.0);
+
+      float whiteRadius = 5.0;
+      float saturation = constrain((wheelDistance - whiteRadius) / (18.0 - whiteRadius), 0, 1);
+      color selectedColor = hsvToRgb(a / TWO_PI, saturation, 1.0);
+
       if (stepEditMode && i == selectedStepChannel && hasSelectedStep()) {
         Step step = ch.sequencer.steps.get(selectedStepIndex);
         step.colorR = red(selectedColor);
         step.colorG = green(selectedColor);
         step.colorB = blue(selectedColor);
-      } else ch.baseColor = selectedColor;
+      } else {
+        ch.baseColor = selectedColor;
+      }
       return;
     }
     for (int j = 0; j < maxSequencerSteps; j++) {
@@ -1074,6 +1119,9 @@ void createGUI() {
 
     cp5.addToggle("rgb_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("RGB", color(0, 200, 255)));
     cp5.addToggle("seq_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("SEQ", color(255, 200, 0)));
+    capsuleSlider("whiteR_" + i, "BLANC R %", 0, 100, 100, color(145, 80, 80));
+    capsuleSlider("whiteG_" + i, "BLANC V %", 0, 100, 100, color(80, 145, 95));
+    capsuleSlider("whiteB_" + i, "BLANC B %", 0, 100, 100, color(80, 105, 155));
     capsuleButton("clone_" + i, "CLONER", color(58, 77, 102));
     capsuleSlider("freq_" + i, "FREQ", 0.1, 10, 1, color(64, 111, 153));
     capsuleSlider("min_" + i, "MIN", 0, 4095, 0, color(64, 111, 153));
@@ -1358,6 +1406,9 @@ void loadChannelConfig() {
       ch.pinR = savedChannel.getInt("pr");
       ch.pinG = savedChannel.getInt("pg");
       ch.pinB = savedChannel.getInt("pb");
+      ch.whiteBalanceR = savedChannel.hasKey("wr") ? constrain(savedChannel.getFloat("wr"), 0, 1) : 1.0;
+      ch.whiteBalanceG = savedChannel.hasKey("wg") ? constrain(savedChannel.getFloat("wg"), 0, 1) : 1.0;
+      ch.whiteBalanceB = savedChannel.hasKey("wb") ? constrain(savedChannel.getFloat("wb"), 0, 1) : 1.0;
     }
     println("Configuration des tranches chargee");
   } catch (Exception e) {
@@ -1393,6 +1444,9 @@ void saveChannelConfig() {
     savedChannel.setInt("pr", ch.pinR);
     savedChannel.setInt("pg", ch.pinG);
     savedChannel.setInt("pb", ch.pinB);
+    savedChannel.setFloat("wr", ch.whiteBalanceR);
+    savedChannel.setFloat("wg", ch.whiteBalanceG);
+    savedChannel.setFloat("wb", ch.whiteBalanceB);
     channels.setJSONObject(i, savedChannel);
   }
   config.setJSONArray("channels", channels);
@@ -1411,6 +1465,30 @@ public void controlEvent(ControlEvent e) {
     updateEffectButton(i);
     updateChannelControls(i);
     cp5.get(ScrollableList.class, "effect_" + i).close();
+    return;
+  }
+  if (e.isController() && e.getName().startsWith("whiteR_")) {
+    int i = int(e.getName().substring(7));
+    Channel ch = allChannels.get(i);
+    ch.whiteBalanceR = constrain(e.getValue() / 100.0, 0, 1);
+    invalidateChannelOutputCache(ch);
+    markWhiteBalanceDirty();
+    return;
+  }
+  if (e.isController() && e.getName().startsWith("whiteG_")) {
+    int i = int(e.getName().substring(7));
+    Channel ch = allChannels.get(i);
+    ch.whiteBalanceG = constrain(e.getValue() / 100.0, 0, 1);
+    invalidateChannelOutputCache(ch);
+    markWhiteBalanceDirty();
+    return;
+  }
+  if (e.isController() && e.getName().startsWith("whiteB_")) {
+    int i = int(e.getName().substring(7));
+    Channel ch = allChannels.get(i);
+    ch.whiteBalanceB = constrain(e.getValue() / 100.0, 0, 1);
+    invalidateChannelOutputCache(ch);
+    markWhiteBalanceDirty();
     return;
   }
   if (e.isController() && e.getName().startsWith("usbPort_")) {
@@ -1465,6 +1543,9 @@ void syncPinControls(int i) {
   cp5.get(Textfield.class, "pinR_" + i).setVisible(visible && rgb);
   cp5.get(Textfield.class, "pinG_" + i).setVisible(visible && rgb);
   cp5.get(Textfield.class, "pinB_" + i).setVisible(visible && rgb);
+  cp5.get(Slider.class, "whiteR_" + i).setVisible(visible && rgb);
+  cp5.get(Slider.class, "whiteG_" + i).setVisible(visible && rgb);
+  cp5.get(Slider.class, "whiteB_" + i).setVisible(visible && rgb);
   String[] fields = {"pinMono_", "pinR_", "pinG_", "pinB_"};
   for (String field : fields) {
     Textfield input = cp5.get(Textfield.class, field + i);
