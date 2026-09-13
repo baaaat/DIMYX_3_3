@@ -187,6 +187,16 @@ void place(String name, int x, int y, int w, int h, boolean visible) {
   if (!visible && c instanceof Textfield) ((Textfield)c).setFocus(false);
 }
 
+void placeEffectList(String name, int x, int y, int w, boolean visible) {
+  ScrollableList list = cp5.get(ScrollableList.class, name);
+  if (list == null) return;
+  list.setPosition(x, y);
+  list.setSize(w, 140);
+  list.setBarHeight(28);
+  list.setItemHeight(28);
+  list.setVisible(visible);
+  if (!visible) list.close();
+}
 void layoutInterface() {
   if (cp5 == null) return;
   cp5.setBroadcast(false);
@@ -212,7 +222,7 @@ void layoutInterface() {
     int x = channelX(i), w = stripControlWidth;
     boolean visible = channelVisible(i), live = visible && !outputsView;
     place("name_" + i, x, 88, w, 28, visible);
-    place("effect_" + i, x, 120, w, 28, live);
+    placeEffectList("effect_" + i, x, 120, w, live);
     place("rgb_" + i, x, 136, w, 28, visible && outputsView);
     place("seq_" + i, x, 184, w, 28, live);
     for (int mode = 0; mode < 4; mode++) place("fxChoice_" + i + "_" + mode, x, 152 + mode * 32, w, 28, false);
@@ -552,6 +562,17 @@ float channelMaster(Channel ch) {
   return (ch.sequencer.active ? ch.sequencer.getCurrentIntensity() : ch.manualVal) / 4095.0;
 }
 
+int computeMonoOutput(Channel ch, float eff) {
+  return constrain(round(4095.0 * eff * channelMaster(ch)), 0, 4095);
+}
+
+void invalidateChannelOutputCache(Channel ch) {
+  ch.valR = -1;
+  ch.valG = -1;
+  ch.valB = -1;
+  ch.value = -1;
+}
+
 boolean physicalOutputEnabled() {
   return !blindActive;
 }
@@ -682,7 +703,7 @@ void draw() {
             ch.valB = vb;
           }
         } else {
-          int fv = int(4095 * fin);
+          int fv = computeMonoOutput(ch, eff);
           if (ch.value != fv) {
             myPort.write("P," + ch.pinMono + "," + fv + "\n");
             ch.value = fv;
@@ -836,7 +857,10 @@ void clearChannelClipboard() {
 void updateEffectButton(int i) {
   String[] labels = {"MAN", "STR", "FEU", "PUL"};
   int mode = constrain(allChannels.get(i).fxMode, 0, 3);
-  cp5.get(Button.class, "effect_" + i).setLabel("FX  " + labels[mode] + "  >");
+  ScrollableList fx = cp5.get(ScrollableList.class, "effect_" + i);
+  if (fx == null) return;
+  fx.changeValue(mode);
+  fx.getCaptionLabel().setText("FX  " + labels[mode] + "  v");
 }
 
 void updateChannelControls(int i) {
@@ -945,7 +969,7 @@ void mousePressed() {
         }
       } else if (j == ch.sequencer.steps.size() && mouseButton == LEFT) {
         color col = ch.baseColor;
-        ch.sequencer.steps.add(new Step(2048, red(col), green(col), blue(col)));
+        ch.sequencer.steps.add(new Step(constrain(ch.manualVal, 0, 4095), red(col), green(col), blue(col)));
         selectedStepChannel = i;
         selectedStepIndex = j;
         stepEditMode = false;
@@ -1047,7 +1071,7 @@ void createGUI() {
   if (interfaceFont == null) interfaceFont = createFont("SansSerif", 13, true);
   cp5.setFont(interfaceFont);
   for (int i = 0; i < nbChannels; i++) {
-    capsuleButton("effect_" + i, "FX  MAN  >", color(60, 83, 109));
+
     cp5.addToggle("rgb_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("RGB", color(0, 200, 255)));
     cp5.addToggle("seq_" + i).setSize(128, 28).setValue(false).setLabel("").setView(new ChipView("SEQ", color(255, 200, 0)));
     capsuleButton("clone_" + i, "CLONER", color(58, 77, 102));
@@ -1060,6 +1084,18 @@ void createGUI() {
     new CapsuleTextfield("pinR_" + i).setText(str(allChannels.get(i).pinR)).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinG_" + i).setText(str(allChannels.get(i).pinG)).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinB_" + i).setText(str(allChannels.get(i).pinB)).setAutoClear(false).setLabel("");
+  }
+  for (int i = 0; i < nbChannels; i++) {
+    ScrollableList fx = cp5.addScrollableList("effect_" + i);
+    fx.setBarHeight(28);
+    fx.setItemHeight(28);
+    fx.setItems(new String[]{"MAN", "STR", "FEU", "PUL"});
+    fx.setColorBackground(color(60, 83, 109));
+    fx.setColorForeground(color(74, 99, 132));
+    fx.setColorActive(color(92, 124, 165));
+    fx.getCaptionLabel().setText("FX  MAN  v");
+    fx.close();
+    fx.bringToFront();
   }
   capsuleButton("outputsView", "SORTIES", color(58, 77, 102));
   cp5.addToggle("blindMode").setValue(false).setLabel("").setView(new ChipView("BLIND", color(191, 139, 48)));
@@ -1371,9 +1407,10 @@ public void controlEvent(ControlEvent e) {
   if (e.isController() && e.getName().startsWith("effect_")) {
     int i = int(e.getName().substring(7));
     Channel ch = allChannels.get(i);
-    ch.fxMode = (ch.fxMode + 1) % 4;
+    ch.fxMode = constrain(round(e.getValue()), 0, 3);
     updateEffectButton(i);
     updateChannelControls(i);
+    cp5.get(ScrollableList.class, "effect_" + i).close();
     return;
   }
   if (e.isController() && e.getName().startsWith("usbPort_")) {
@@ -1413,7 +1450,11 @@ public void rgb_8(boolean v) { toggleRGB(8, v); }
 public void rgb_9(boolean v) { toggleRGB(9, v); }
 
 void toggleRGB(int i, boolean v) {
-  allChannels.get(i).isRGB = v;
+  Channel ch = allChannels.get(i);
+  if (ch.isRGB != v) {
+    ch.isRGB = v;
+    invalidateChannelOutputCache(ch);
+  }
   syncPinControls(i);
 }
 
@@ -1452,6 +1493,7 @@ void toggleSeq(int i, boolean v) {
     ch.sequencer.lastStepTime = millis();
   }
   ch.sequencer.active = v;
+  invalidateChannelOutputCache(ch);
   if (!v && stepEditMode && selectedStepChannel == i) stepEditMode = false;
   updateChannelControls(i);
   println("Tranche " + i + " : Sequenceur " + (v ? "ACTIVE" : "DESACTIVE"));

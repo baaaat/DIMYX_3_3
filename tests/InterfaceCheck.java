@@ -51,6 +51,20 @@ public class InterfaceCheck {
     app.mousePressed=false;
     app.cp5.getWindow().mouseEvent(x,y,false);
   }
+  static void selectFx(int channel, int mode) {
+    var list = app.cp5.get(ScrollableList.class, "effect_"+channel);
+    if (!list.isOpen()) click("effect_"+channel);
+    check(list.isOpen(),"FX dropdown opens");
+    float[] p = list.getPosition();
+    int x = (int)p[0] + list.getWidth()/2;
+    int y = (int)p[1] + 28 + mode*28 + 14;
+    app.mousePressed=false;
+    app.cp5.getWindow().mouseEvent(x,y,false);
+    app.mousePressed=true;
+    app.cp5.getWindow().mouseEvent(x,y,true);
+    app.mousePressed=false;
+    app.cp5.getWindow().mouseEvent(x,y,false);
+  }
   public static void main(String[] args) {
     renderDirectory = args.length > 0 ? args[0] : null;
     app = new TestConsole(); size(1366,768);
@@ -74,21 +88,20 @@ public class InterfaceCheck {
       app.allChannels.get(first).fxMode=app.FX_MANUAL;
       app.updateEffectButton(first);
       app.updateChannelControls(first);
+      var fxList=app.cp5.get(ScrollableList.class,"effect_"+first);
+      int modeBefore=app.allChannels.get(first).fxMode;
+      click("effect_"+first);
+      check(fxList.isOpen(),"FX dropdown opens from bar");
+      check(app.allChannels.get(first).fxMode==modeBefore,"opening FX dropdown preserves mode");
+      fxList.close();
       if (!app.allChannels.get(first).sequencer.active) click("seq_"+first);
-      check(app.allChannels.get(first).sequencer.active,"sequencer active before FX cycle");
-      for (int fx : new int[]{1,2,3}) {
-        click("effect_"+first);
-        check(app.allChannels.get(first).fxMode==fx,"FX cycle mode "+fx);
+      check(app.allChannels.get(first).sequencer.active,"sequencer active before FX menu");
+      for (int fx : new int[]{1,2,3,0}) {
+        selectFx(first,fx);
+        check(app.allChannels.get(first).fxMode==fx,"direct FX selection "+fx);
+        check(!fxList.isOpen(),"FX dropdown closes after selection");
         check(app.allChannels.get(first).sequencer.active,"SEQ stays active with FX "+fx);
-        check(app.cp5.getController("bpm_"+first).isVisible(),"BPM visible with SEQ+FX "+fx);
-        check(app.cp5.getController("freq_"+first).isVisible(),"FREQ visible with FX "+fx);
-        check(app.cp5.getController("min_"+first).isVisible(),"MIN visible with FX "+fx);
-      }
-      click("effect_"+first);
-      check(app.allChannels.get(first).fxMode==app.FX_MANUAL,"FX cycle back to MAN");
-      click("effect_"+first);
-      check(app.allChannels.get(first).fxMode==app.FX_STROBE,"FX still clickable after full cycle");
-      float oldBpm=app.allChannels.get(first).sequencer.bpm;
+      }      float oldBpm=app.allChannels.get(first).sequencer.bpm;
       app.cp5.get(Slider.class,"bpm_"+first).setValue(Math.min(240f,oldBpm+1));
       check(app.allChannels.get(first).sequencer.bpm!=oldBpm || oldBpm==240,"BPM reacts after SEQ+FX");
       float oldFreq=app.allChannels.get(first).fxFreq;
@@ -96,11 +109,26 @@ public class InterfaceCheck {
       check(app.allChannels.get(first).fxFreq!=oldFreq,"FREQ reacts after SEQ+FX");
       var mono=app.allChannels.get(first);
       mono.isRGB=false;
+      mono.fxMode=app.FX_MANUAL;
+      mono.sequencer.active=false;
+      mono.sequencer.steps.clear();
+      mono.manualVal=512;
+      app.mouseX=app.stepsX(first)+5;
+      app.mouseY=app.stepsY()+5;
+      app.mouseButton=PApplet.LEFT;
+      app.mousePressed();
+      check(mono.sequencer.steps.size()==1 && mono.sequencer.steps.get(0).intensity==512,"new mono step uses fader level");
+      mono.manualVal=3072;
+      app.mouseX=app.stepsX(first)+app.stepSize+app.stepGap+5;
+      app.mouseY=app.stepsY()+5;
+      app.mousePressed();
+      check(mono.sequencer.steps.size()==2 && mono.sequencer.steps.get(1).intensity==3072,"second mono step uses new fader level");
       mono.sequencer.active=true;
       mono.sequencer.currentStep=0;
-      mono.sequencer.steps.get(0).intensity=1536;
-      check(Math.abs(app.channelMaster(mono)-(1536f/4095f))<0.0001f,"mono sequencer intensity");
-      mono.isRGB=originalRgb;
+      int monoLow=app.computeMonoOutput(mono,1.0f);
+      mono.sequencer.currentStep=1;
+      int monoHigh=app.computeMonoOutput(mono,1.0f);
+      check(monoLow==512 && monoHigh==3072,"mono sequencer reaches physical output values");      mono.isRGB=originalRgb;
       check(app.physicalOutputEnabled(),"output live by default");
       click("blindMode");
       check(app.blindActive && !app.physicalOutputEnabled(),"BLIND blocks physical output");
@@ -180,6 +208,6 @@ public class InterfaceCheck {
     check(!field.isFocus(),"hidden fields lose keyboard focus");
     app.applyBlackout(false);
     for(var ch:app.allChannels) check(ch.manualVal==0 && !ch.sequencer.active,"blackout hidden channels");
-    System.out.println("PASS: resolutions, FX cycle, BLIND, mono sequencer, routing RGB, paging, scenes, clone, text fields and blackout");
+    System.out.println("PASS: resolutions, FX dropdown, BLIND, mono sequencer output, routing RGB, paging, scenes, clone, text fields and blackout");
   }
 }

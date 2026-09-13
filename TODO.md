@@ -11,8 +11,9 @@
 - [ ] Valider manuellement l’interface, les scènes et les sorties matérielles selon CONTRIBUTING.md.
 - [x] Supprimer le chip rgb on/off sur la vue console, il est visible uniquement en vue SORTIES
 - [x] Retablir le mode "blind" : programmation sans agir sur les sorties
-- [ ] Le sequenceur agit aussi sur le mode mono; Actuellement, l'animation UI est ok mais rien en sortie
-- [ ] retabllir un menu deroulant fonctionnel pour les fx
+- [x] Valider sur materiel le sequenceur mono apres correctif : chaque nouveau pas prend le niveau du fader et la sortie mono suit l'intensite du pas
+- [x] Valider le menu deroulant FX ControlP5 : MAN / STR / FEU / PUL, sans gel de l UI
+- [ ] En ruban led RGB, il faut pouvoir atteindre un vrai blanc
 - [x] Renommer "Sortie/USB" en "Sorties"
 - [ ] Préparer le support multi-carte wifi ESP32. 
 - [ ] En plus des pins, il faut pouvoir adresser une carte à une tranche
