@@ -177,12 +177,13 @@ public class InterfaceCheck {
     app.availablePorts=new String[]{"TEST0","TEST1","TEST2","TEST3","TEST4","TEST5","TEST6","TEST7"};
     app.refreshBoardChoices();
     var board=app.cp5.get(ScrollableList.class,"board_"+app.firstChannel());
-    check(board.getItems().size()==9,"detected ports appear in board menu");
-    board.setValue(1);
-    check("TEST0".equals(app.allChannels.get(app.firstChannel()).outputBoardId),"board assignment from menu");
+    check(board.getItems().size()==8,"detected ports appear in board menu");
     board.setValue(0);
+    check("TEST0".equals(app.allChannels.get(app.firstChannel()).outputBoardId),"board assignment from menu");
+    for (var ch:app.allChannels) ch.outputBoardId="USB";
     app.refreshPortButtons(); bounds(); click("nextPorts"); click("usbPort_6");
     check("TEST6".equals(app.chosenPort),"port choice after paging");
+    app.availablePorts=new String[0]; app.refreshBoardChoices();
     app.outputsView=false; app.layoutInterface();
     app.selectedSceneIndex=7; app.currentPage=1;
     size(1600,1000);

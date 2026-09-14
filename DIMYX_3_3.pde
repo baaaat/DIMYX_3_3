@@ -89,7 +89,7 @@ long whiteBalanceSaveAt = 0;
 final int stepSize = 22, stepGap = 4;
 PFont interfaceFont;
 String[] availablePorts = new String[0];
-String[] availableBoardIds = {"USB"};
+String[] availableBoardIds = new String[0];
 ArrayList<Button> portButtons = new ArrayList<Button>();
 int portPage = 0;
 final int portsPerPage = 6;
@@ -273,8 +273,8 @@ void layoutInterface() {
     place("freq_" + i, x, 216, w, 28, live);
     place("min_" + i, x, 248, w, 28, live);
     place("fader_" + i, x + w / 2 - 16, 284, 32, max(48, height - 492), live);
-    place("bpm_" + i, x, height - 92, w, 28, live);
-    place("fire_" + i, x, height - 132, w, 32, live);
+    place("bpm_" + i, x + 58, height - 92, max(58, w - 58), 28, live);
+    place("fire_" + i, x, height - 92, min(54, w), 28, live);
     place("clone_" + i, x, height - 52, w, 32, live);
     placeBoardList("board_" + i, x, 158, w, visible && outputsView);
     place("pinMono_" + i, x, 246, w, 32, visible && outputsView);
@@ -668,8 +668,6 @@ void loadEsp32Targets() {
 
 void refreshBoardChoices() {
   ArrayList<String> ids = new ArrayList<String>();
-  ids.add("USB");
-  if (availablePorts.length == 0 && !serialConnected) ids.remove("USB");
   for (String port : availablePorts) if (!ids.contains(port)) ids.add(port);
   for (String id : esp32Targets.keySet()) if (!ids.contains(id)) ids.add(id);
   availableBoardIds = ids.toArray(new String[ids.size()]);
@@ -678,7 +676,8 @@ void refreshBoardChoices() {
     ScrollableList board = cp5.get(ScrollableList.class, "board_" + i);
     if (board == null) continue;
     board.setItems(availableBoardIds);
-    board.setValue(boardChoiceIndex(allChannels.get(i).outputBoardId));
+    int choice = boardChoiceIndex(allChannels.get(i).outputBoardId);
+    if (choice >= 0) board.setValue(choice);
     board.bringToFront();
     board.close();
   }
@@ -689,6 +688,12 @@ int boardChoiceIndex(String id) {
     String wanted = trim(id).toUpperCase();
     for (int i = 0; i < availableBoardIds.length; i++) {
       if (availableBoardIds[i].equals(wanted)) return i;
+    }
+  }
+  if (availableBoardIds.length == 0) return -1;
+  if (id != null && trim(id).equalsIgnoreCase("USB") && connectedPortName != null) {
+    for (int i = 0; i < availableBoardIds.length; i++) {
+      if (availableBoardIds[i].equalsIgnoreCase(connectedPortName)) return i;
     }
   }
   return 0;
@@ -1019,7 +1024,8 @@ void updateGUIFromChannels() {
     cp5.get(Slider.class, "whiteR_" + i).setValue(ch.whiteBalanceR * 100.0);
     cp5.get(Slider.class, "whiteG_" + i).setValue(ch.whiteBalanceG * 100.0);
     cp5.get(Slider.class, "whiteB_" + i).setValue(ch.whiteBalanceB * 100.0);
-    cp5.get(ScrollableList.class, "board_" + i).setValue(boardChoiceIndex(ch.outputBoardId));
+    int boardChoice = boardChoiceIndex(ch.outputBoardId);
+    if (boardChoice >= 0) cp5.get(ScrollableList.class, "board_" + i).setValue(boardChoice);
     cp5.get(Textfield.class, "pinMono_" + i).setText(str(ch.pinMono));
     cp5.get(Textfield.class, "pinR_" + i).setText(str(ch.pinR));
     cp5.get(Textfield.class, "pinG_" + i).setText(str(ch.pinG));
@@ -1699,6 +1705,7 @@ public void controlEvent(ControlEvent e) {
   }
   if (e.isController() && e.getName().startsWith("board_")) {
     int i = int(e.getName().substring(6));
+    if (availableBoardIds.length == 0) return;
     int choice = constrain(round(e.getValue()), 0, availableBoardIds.length - 1);
     setChannelBoard(i, availableBoardIds[choice]);
     return;
