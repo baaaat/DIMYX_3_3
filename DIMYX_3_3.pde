@@ -5,10 +5,14 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 ControlP5 cp5;
 Serial myPort;
 HashMap<String, Serial> serialOutputs = new HashMap<String, Serial>();
+HashMap<String, String> serialBoardIds = new HashMap<String, String>();
+HashMap<String, String> boardNames = new HashMap<String, String>();
 
 class Esp32Target {
   String id;
@@ -161,7 +165,12 @@ class CapsuleSliderView implements ControllerView<Slider> {
 
 // La saisie et les raccourcis restent ceux de Textfield ; seul le dessin change.
 class CapsuleTextfield extends Textfield {
-  CapsuleTextfield(String name) { super(DIMYX_3_3.this.cp5, name); }
+  String fieldName;
+
+  CapsuleTextfield(String name) {
+    super(DIMYX_3_3.this.cp5, name);
+    fieldName = name;
+  }
 
   public void draw(PGraphics g) {
     g.pushStyle();
@@ -173,9 +182,16 @@ class CapsuleTextfield extends Textfield {
     g.strokeWeight(1);
     g.rect(0, 0, getWidth(), getHeight(), getHeight() / 2.0);
     g.textFont(interfaceFont);
-    g.fill(240);
     g.textAlign(LEFT, CENTER);
     String value = getText();
+    if (value.length() == 0 && fieldName.startsWith("boardName_")) {
+      g.fill(145, 158, 175);
+      g.text("NOM CARTE", 10, getHeight() / 2 - 1);
+      g.popMatrix();
+      g.popStyle();
+      return;
+    }
+    g.fill(240);
     int cursor = constrain(getIndex(), 0, value.length());
     int start = 0;
     if (isFocus()) while (start < cursor && g.textWidth(value.substring(start, cursor)) > getWidth() - 24) start++;
@@ -281,6 +297,7 @@ void layoutInterface() {
     place("fire_" + i, x, height - 92, min(54, w), 28, live);
     place("clone_" + i, x, height - 52, w, 32, live);
     placeBoardList("board_" + i, x, 158, w, visible && outputsView);
+    place("boardName_" + i, x, 120, w, 28, visible && outputsView);
     place("pinMono_" + i, x, 246, w, 32, visible && outputsView);
     place("pinR_" + i, x, 246, w, 32, visible && outputsView);
     place("pinG_" + i, x, 300, w, 32, visible && outputsView);
@@ -333,6 +350,21 @@ public void blindMode(boolean v) {
 public void scenesView() { effectMenuChannel = -1; scenesView = !scenesView; layoutInterface(); }
 public void refreshPorts() {
   availablePorts = Serial.list();
+  ArrayList<String> missingPorts = new ArrayList<String>();
+  for (String portName : serialOutputs.keySet()) {
+    if (!availablePortsContains(portName)) missingPorts.add(portName);
+  }
+  for (String portName : missingPorts) {
+    Serial port = serialOutputs.remove(portName);
+    if (port != null) {
+      try { port.stop(); } catch (Exception ignored) { }
+    }
+  }
+  ArrayList<String> missingBoardIds = new ArrayList<String>();
+  for (String id : serialBoardIds.keySet()) {
+    if (!availablePortsContains(serialBoardIds.get(id))) missingBoardIds.add(id);
+  }
+  for (String id : missingBoardIds) serialBoardIds.remove(id);
   portPage = min(portPage, max(0, (availablePorts.length - 1) / portsPerPage));
   refreshBoardChoices();
   refreshPortButtons();
@@ -344,13 +376,15 @@ void refreshPortButtons() {
   for (Button b : portButtons) b.remove();
   portButtons.clear();
   boolean visible = outputsView && (!narrowLayout || scenesView);
+  int portStartY = 178 + boardAssociationCount() * 18;
   for (int i = portPage * portsPerPage; i < min(availablePorts.length, (portPage + 1) * portsPerPage); i++) {
     Button b = capsuleButton("usbPort_" + i, availablePorts[i], color(58, 77, 102));
-    b.setPosition(scenePanelX, 152 + (i % portsPerPage) * 40).setSize(scenePanelWidth, 32).setVisible(visible);
+    b.setPosition(scenePanelX, portStartY + (i % portsPerPage) * 40).setSize(scenePanelWidth, 32).setVisible(visible);
     portButtons.add(b);
   }
-  place("prevPorts", scenePanelX, 400, 50, 30, visible && portPage > 0);
-  place("nextPorts", scenePanelX + scenePanelWidth - 50, 400, 50, 30, visible && (portPage + 1) * portsPerPage < availablePorts.length);
+  int pageButtonY = portStartY + portsPerPage * 40;
+  place("prevPorts", scenePanelX, pageButtonY, 50, 30, visible && portPage > 0);
+  place("nextPorts", scenePanelX + scenePanelWidth - 50, pageButtonY, 50, 30, visible && (portPage + 1) * portsPerPage < availablePorts.length);
 }
 
 void drawConsoleInterface() {
@@ -375,7 +409,6 @@ void drawConsoleInterface() {
     rect(x - 8, 80, w + 16, height - 96, 18);
     if (outputsView) {
       fill(197, 212, 229);
-      text("CARTE", x, 151);
       text(allChannels.get(i).isRGB ? "SORTIE ROUGE" : "SORTIE MONO", x, 242);
       if (allChannels.get(i).isRGB) {
         text("SORTIE VERTE", x, 296);
@@ -410,7 +443,8 @@ void drawConsoleInterface() {
   if (outputsView && (!narrowLayout || scenesView)) {
     textSize(13);
     text(fitText(g, "PORT USB : " + connectedPortName, scenePanelWidth), scenePanelX, 88);
-    if (availablePorts.length == 0) text("Aucun port detecte", scenePanelX, 175);
+    drawBoardAssociations();
+    if (availablePorts.length == 0 && serialBoardIds.isEmpty() && esp32Targets.isEmpty()) text("Aucune carte detectee", scenePanelX, 175);
   }
   popStyle();
 }
@@ -672,18 +706,76 @@ void loadEsp32Targets() {
 
 void refreshBoardChoices() {
   ArrayList<String> ids = new ArrayList<String>();
-  for (String port : availablePorts) if (!ids.contains(port)) ids.add(port);
+  for (String port : availablePorts) {
+    if (!serialPortHasBoardId(port) && !ids.contains(port)) ids.add(port);
+  }
+  for (String id : serialBoardIds.keySet()) if (!ids.contains(id)) ids.add(id);
   for (String id : esp32Targets.keySet()) if (!ids.contains(id)) ids.add(id);
   availableBoardIds = ids.toArray(new String[ids.size()]);
+  availableBoardLabels = new String[availableBoardIds.length];
+  for (int i = 0; i < availableBoardIds.length; i++) availableBoardLabels[i] = boardLabel(availableBoardIds[i]);
   if (cp5 == null) return;
   for (int i = 0; i < nbChannels; i++) {
     ScrollableList board = cp5.get(ScrollableList.class, "board_" + i);
     if (board == null) continue;
-    board.setItems(availableBoardIds);
+    board.setItems(availableBoardLabels);
     int choice = boardChoiceIndex(allChannels.get(i).outputBoardId);
     if (choice >= 0) board.setValue(choice);
     board.bringToFront();
     board.close();
+  }
+  updateBoardNameFields();
+}
+
+String[] availableBoardLabels = new String[0];
+
+boolean serialPortHasBoardId(String portName) {
+  for (String port : serialBoardIds.values()) if (port.equalsIgnoreCase(portName)) return true;
+  return false;
+}
+
+String boardLabel(String id) {
+  String key = trim(id).toUpperCase();
+  if (boardNames.containsKey(key)) return boardNames.get(key);
+  if (serialBoardIds.containsKey(key)) return key + " / " + serialBoardIds.get(key);
+  if (esp32Targets.containsKey(key)) return key + " / WIFI";
+  return key;
+}
+
+int boardAssociationCount() {
+  return serialBoardIds.size() + esp32Targets.size();
+}
+
+String boardAssociationLabel(String id) {
+  String key = trim(id).toUpperCase();
+  String label = boardNames.containsKey(key) ? boardNames.get(key) + " / " : "";
+  if (serialBoardIds.containsKey(key)) return label + key + " / " + serialBoardIds.get(key);
+  if (esp32Targets.containsKey(key)) return label + key + " / WIFI";
+  return label + key;
+}
+
+void drawBoardAssociations() {
+  fill(168, 185, 204);
+  textSize(11);
+  text("CARTES DETECTEES", scenePanelX, 148);
+  int y = 166;
+  for (String id : serialBoardIds.keySet()) {
+    text(fitText(g, boardAssociationLabel(id), scenePanelWidth), scenePanelX, y);
+    y += 16;
+  }
+  for (String id : esp32Targets.keySet()) {
+    text(fitText(g, boardAssociationLabel(id), scenePanelWidth), scenePanelX, y);
+    y += 16;
+  }
+}
+
+void updateBoardNameFields() {
+  if (cp5 == null) return;
+  for (int i = 0; i < nbChannels; i++) {
+    Textfield field = cp5.get(Textfield.class, "boardName_" + i);
+    if (field == null) continue;
+    String id = allChannels.get(i).outputBoardId;
+    field.setText(boardNames.containsKey(trim(id).toUpperCase()) ? boardNames.get(trim(id).toUpperCase()) : "");
   }
 }
 
@@ -744,7 +836,7 @@ boolean channelUsesUsb(Channel ch) {
 boolean channelUsesSerialPort(Channel ch) {
   if (channelUsesUsb(ch)) return true;
   for (String port : availablePorts) if (port.equalsIgnoreCase(ch.outputBoardId)) return true;
-  return false;
+  return serialBoardIds.containsKey(trim(ch.outputBoardId).toUpperCase());
 }
 
 boolean hasAvailableSerialOutput() {
@@ -753,6 +845,21 @@ boolean hasAvailableSerialOutput() {
 
 Serial serialForChannel(Channel ch) {
   if (channelUsesUsb(ch)) return myPort;
+  String boardId = trim(ch.outputBoardId).toUpperCase();
+  String mappedPort = serialBoardIds.get(boardId);
+  if (mappedPort != null) {
+    Serial mapped = serialOutputs.get(mappedPort);
+    if (mapped != null) return mapped;
+    if (mappedPort.equalsIgnoreCase(connectedPortName)) return myPort;
+    try {
+      mapped = new Serial(this, mappedPort, 115200);
+      serialOutputs.put(mappedPort, mapped);
+      return mapped;
+    } catch (Exception e) {
+      println("Port de la carte " + boardId + " indisponible : " + e.getMessage());
+      return null;
+    }
+  }
   for (String portName : availablePorts) {
     if (!portName.equalsIgnoreCase(ch.outputBoardId)) continue;
     if (portName.equalsIgnoreCase(connectedPortName)) return myPort;
@@ -1257,6 +1364,8 @@ void mouseReleased() {
 
 String findArduinoPort() {
   String[] ports = Serial.list();
+  serialBoardIds.clear();
+  String firstFoundPort = null;
   for (int i = 0; i < ports.length; i++) {
     String portName = ports[i];
     Serial testPort = null;
@@ -1269,17 +1378,20 @@ String findArduinoPort() {
       delay(300);
       String heartbeatResponse = testPort.readString();
       testPort.stop();
+      String boardId = extractBoardId(startupResponse + "\n" + heartbeatResponse);
+      if (boardId != null) serialBoardIds.put(boardId, portName);
       boolean hasStartupBanner = startupResponse != null && startupResponse.contains("THEATRE_CONSOLE");
       boolean hasHeartbeat = heartbeatResponse != null && trim(heartbeatResponse).endsWith("H");
-      if (hasStartupBanner || hasHeartbeat) {
+      if (hasStartupBanner || hasHeartbeat || boardId != null) {
         println("Arduino trouve : " + portName);
-        return portName;
+        if (firstFoundPort == null) firstFoundPort = portName;
       }
     } catch (Exception e) {
       if (testPort != null) testPort.stop();
     }
   }
-  return null;
+  refreshBoardChoices();
+  return firstFoundPort;
 }
 
 void connectToSerial(String portName) {
@@ -1300,6 +1412,9 @@ void connectToSerial(String portName) {
     println("Erreur : " + e.getMessage());
     serialConnected = false;
     myPort = null;
+    connectedPortName = "Aucun";
+    lastKnownPortName = null;
+    nextPortScanTime = millis();
   }
 }
 
@@ -1328,7 +1443,20 @@ void pollSerialResponses() {
 void processSerialResponse(String line) {
   if (line == null || line.length() == 0) return;
   lastSerialResponseTime = millis();
+  String boardId = extractBoardId(line);
+  if (boardId != null && connectedPortName != null && !connectedPortName.equals("Aucun")) {
+    serialBoardIds.put(boardId, connectedPortName);
+    refreshBoardChoices();
+  }
   if (line.endsWith("H")) watchdogArmed = true;
+}
+
+String extractBoardId(String text) {
+  if (text == null) return null;
+  Matcher matcher = Pattern.compile("(?i)BOARD_ID\\s*[:=,]?\\s*[\\\"']?([A-Za-z0-9_-]+)").matcher(text);
+  if (!matcher.find()) return null;
+  String id = trim(matcher.group(1)).toUpperCase();
+  return id.length() == 0 ? null : id;
 }
 
 void handleConnectionLoss() {
@@ -1384,11 +1512,12 @@ void createGUI() {
     capsuleButton("fire_" + i, "FIRE", color(177, 72, 42));
     new CapsuleTextfield("name_" + i).setText(allChannels.get(i).name).setAutoClear(false).setLabel("");
     ScrollableList board = cp5.addScrollableList("board_" + i);
-    board.setBarHeight(28).setItemHeight(28).setItems(availableBoardIds);
+    board.setBarHeight(28).setItemHeight(28).setItems(availableBoardLabels);
     board.setColorBackground(color(48, 73, 99));
     board.setColorForeground(color(67, 96, 126));
     board.setColorActive(color(89, 121, 155));
     board.close();
+    new CapsuleTextfield("boardName_" + i).setText("").setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinMono_" + i).setText(str(allChannels.get(i).pinMono)).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinR_" + i).setText(str(allChannels.get(i).pinR)).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinG_" + i).setText(str(allChannels.get(i).pinG)).setAutoClear(false).setLabel("");
@@ -1656,6 +1785,16 @@ void loadScenes() {
 void loadChannelConfig() {
   try {
     JSONObject config = loadJSONObject("channelConfig.json");
+    boardNames.clear();
+    if (config.hasKey("boards")) {
+      JSONArray savedBoards = config.getJSONArray("boards");
+      for (int i = 0; i < savedBoards.size(); i++) {
+        JSONObject savedBoard = savedBoards.getJSONObject(i);
+        String id = trim(savedBoard.getString("id")).toUpperCase();
+        String name = trim(savedBoard.getString("name"));
+        if (id.length() > 0 && name.length() > 0) boardNames.put(id, name);
+      }
+    }
     JSONArray channels = config.getJSONArray("channels");
     for (int i = 0; i < min(nbChannels, channels.size()); i++) {
       JSONObject savedChannel = channels.getJSONObject(i);
@@ -1713,6 +1852,16 @@ void saveChannelConfig() {
     channels.setJSONObject(i, savedChannel);
   }
   config.setJSONArray("channels", channels);
+  JSONArray boards = new JSONArray();
+  for (String id : boardNames.keySet()) {
+    String name = trim(boardNames.get(id));
+    if (name.length() == 0) continue;
+    JSONObject savedBoard = new JSONObject();
+    savedBoard.setString("id", id);
+    savedBoard.setString("name", name);
+    boards.append(savedBoard);
+  }
+  config.setJSONArray("boards", boards);
   saveJSONObject(config, "channelConfig.json");
 }
 
@@ -1764,6 +1913,7 @@ public void controlEvent(ControlEvent e) {
     if (availableBoardIds.length == 0) return;
     int choice = constrain(round(e.getValue()), 0, availableBoardIds.length - 1);
     setChannelBoard(i, availableBoardIds[choice]);
+    updateBoardNameFields();
     return;
   }
 }
@@ -1774,10 +1924,31 @@ void setChannelBoard(int i, String value) {
   allChannels.get(i).outputBoardId = board;
   invalidateChannelOutputCache(allChannels.get(i));
   saveChannelConfig();
-  if (!board.equals("USB") && !esp32Targets.containsKey(board) && !availablePortsContains(board)) {
+  if (!board.equals("USB") && !esp32Targets.containsKey(board) && !availablePortsContains(board) && !serialBoardIds.containsKey(board)) {
     println("Attention: carte ESP32 inconnue pour tranche " + (i + 1) + " : " + board);
   }
 }
+
+void setBoardName(int i, String value) {
+  String id = trim(allChannels.get(i).outputBoardId).toUpperCase();
+  if (id.length() == 0 || id.equals("USB")) return;
+  String name = trim(value);
+  if (name.length() == 0) boardNames.remove(id);
+  else boardNames.put(id, name);
+  saveChannelConfig();
+  refreshBoardChoices();
+}
+
+public void boardName_0(String s) { setBoardName(0, s); }
+public void boardName_1(String s) { setBoardName(1, s); }
+public void boardName_2(String s) { setBoardName(2, s); }
+public void boardName_3(String s) { setBoardName(3, s); }
+public void boardName_4(String s) { setBoardName(4, s); }
+public void boardName_5(String s) { setBoardName(5, s); }
+public void boardName_6(String s) { setBoardName(6, s); }
+public void boardName_7(String s) { setBoardName(7, s); }
+public void boardName_8(String s) { setBoardName(8, s); }
+public void boardName_9(String s) { setBoardName(9, s); }
 public void name_0(String s) { setChannelName(0, s); }
 public void name_1(String s) { setChannelName(1, s); }
 public void name_2(String s) { setChannelName(2, s); }

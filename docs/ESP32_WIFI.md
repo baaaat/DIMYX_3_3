@@ -19,4 +19,4 @@ Le transport utilise UDP. Le contrat reprend les commandes texte du lien serie :
 - `P,<pin>,<valeur>\n` : sortie 0..4095
 - `X\n` : blackout
 
-Les sorties d’une tranche affectée à `USB` utilisent le contrôleur série ; les autres utilisent la carte ESP32 correspondant à leur identifiant. Une cible dont l’hôte ne peut pas être résolu est ignorée sans masquer les autres cibles valides. La découverte active sur le réseau n’est pas réalisée, car le protocole de découverte du firmware n’est pas fourni.
+Les sorties d’une tranche affectée à `USB` utilisent le contrôleur série. Un identifiant reçu sous la forme `BOARD_ID:<identifiant>` sur un port USB peut aussi être choisi directement dans **CARTE** : les commandes sont alors envoyées au port associé, même si son nom `COMx` change. Les autres identifiants utilisent la carte ESP32 correspondant à leur entrée. Une cible dont l’hôte ne peut pas être résolu est ignorée sans masquer les autres cibles valides. La découverte active sur le réseau n’est pas réalisée, car le protocole de découverte du firmware n’est pas fourni.

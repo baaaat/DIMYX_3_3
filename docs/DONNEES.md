@@ -6,6 +6,16 @@ Les fichiers [`channelConfig.json`](../channelConfig.json) et [`scenes.json`](..
 
 `channelConfig.json` contient un objet avec une liste `channels`. L’ordre correspond aux indices des tranches, de 0 à 9.
 
+Le fichier peut aussi contenir `boards`, une liste d’alias humains associés aux identifiants matériels :
+
+```json
+"boards": [
+  {"id": "ESP_A", "name": "Gradateur scène"}
+]
+```
+
+Pour une carte USB, l’identifiant `id` est le `BOARD_ID` annoncé par le contrôleur. Le port `COMx` associé est détecté à l’exécution et n’est pas enregistré dans ce fichier.
+
 | Clé | Sens |
 | --- | --- |
 | `name` | Nom affiché |

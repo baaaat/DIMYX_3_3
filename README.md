@@ -89,4 +89,4 @@ Le bouton **FX** est cyclique : MAN -> STR -> FEU -> PUL -> MAN.
 
 Dans la vue console, maintenir **FIRE** force la tranche à pleine puissance ; elle s’éteint au relâchement. Maintenir **Shift** en cliquant sur **FIRE** active ou désactive le mode bistable.
 
-Dans **SORTIES**, le menu **CARTE** propose `USB`, les ports série détectés et les identifiants ESP32 valides. Le choix est propre à chaque tranche et les menus restent au-dessus des champs de pins.
+Dans **SORTIES**, le menu **CARTE** propose les cartes détectées. Lorsqu’un contrôleur USB annonce un `BOARD_ID`, le menu n’affiche qu’une entrée pour cette carte, avec son identifiant et son port `COMx` ; le port n’est pas ajouté une seconde fois. Le panneau USB affiche l’association et le champ **NOM CARTE** permet de lui attribuer un nom humain, conservé dans `channelConfig.json`. Les cibles ESP32 Wi-Fi restent issues de `esp32Boards.json`.

@@ -34,5 +34,5 @@ Ordre de traitement : P1 → P2 → P3. Ignorer les tâches `[PAUSE]`.
 - [x] Le menu deroulant de carte doit rester au premier plan par rapport aux champ d'affectation des pins.
 - [X] Bug: les tranches reagissent bien au mouvements du fader/controles mais les LED s'eteignent apres deux secondes
 - [x] bouton fire trop haut, il chevauche le sequenceur.
-- [ ][PAUSE] reconnaitre un identifiant materiel unique pour chaque carte, permettre le renommage des cartes
+- [ X][P1] reconnaitre un identifiant materiel unique pour chaque carte, permettre le renommage des cartes
 - [X] fonction fire à ameliorer: on au clic, off au relachement du clic 

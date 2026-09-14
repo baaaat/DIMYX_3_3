@@ -1,122 +1,134 @@
-{"channels": [
-  {
-    "wg": 0.8142856359481812,
-    "pr": 3,
-    "pb": 6,
-    "pg": 5,
-    "name": "RGB",
-    "wr": 0.8428571224212646,
-    "wb": 0.5428571701049805,
-    "rgb": true,
-    "pm": 3,
-    "board": "COM4"
-  },
-  {
-    "wg": 1,
-    "pr": 3,
-    "pb": 6,
-    "pg": 5,
-    "name": "Tranche 2",
-    "wr": 1,
-    "wb": 1,
-    "rgb": true,
-    "pm": 3,
-    "board": "COM1"
-  },
-  {
-    "wg": 1,
-    "pr": 3,
-    "pb": 6,
-    "pg": 5,
-    "name": "Tranche 3",
-    "wr": 1,
-    "wb": 1,
-    "rgb": false,
-    "pm": 3,
-    "board": "COM1"
-  },
-  {
-    "wg": 1,
-    "pr": 3,
-    "pb": 6,
-    "pg": 5,
-    "name": "Tranche 4",
-    "wr": 1,
-    "wb": 1,
-    "rgb": false,
-    "pm": 3,
-    "board": "COM1"
-  },
-  {
-    "wg": 1,
-    "pr": 3,
-    "pb": 6,
-    "pg": 5,
-    "name": "Tranche 5",
-    "wr": 1,
-    "wb": 1,
-    "rgb": false,
-    "pm": 3,
-    "board": "COM1"
-  },
-  {
-    "wg": 1,
-    "pr": 3,
-    "pb": 6,
-    "pg": 5,
-    "name": "Tranche 6",
-    "wr": 1,
-    "wb": 1,
-    "rgb": false,
-    "pm": 3,
-    "board": "COM1"
-  },
-  {
-    "wg": 1,
-    "pr": 3,
-    "pb": 6,
-    "pg": 5,
-    "name": "Tranche 7",
-    "wr": 1,
-    "wb": 1,
-    "rgb": false,
-    "pm": 3,
-    "board": "COM1"
-  },
-  {
-    "wg": 1,
-    "pr": 3,
-    "pb": 6,
-    "pg": 5,
-    "name": "Tranche 8",
-    "wr": 1,
-    "wb": 1,
-    "rgb": false,
-    "pm": 3,
-    "board": "COM1"
-  },
-  {
-    "wg": 1,
-    "pr": 3,
-    "pb": 6,
-    "pg": 5,
-    "name": "Tranche 9",
-    "wr": 1,
-    "wb": 1,
-    "rgb": false,
-    "pm": 3,
-    "board": "COM1"
-  },
-  {
-    "wg": 1,
-    "pr": 3,
-    "pb": 6,
-    "pg": 5,
-    "name": "Tranche 10",
-    "wr": 1,
-    "wb": 1,
-    "rgb": false,
-    "pm": 3,
-    "board": "COM1"
-  }
-]}
+{
+  "channels": [
+    {
+      "wg": 0.8142856359481812,
+      "pr": 3,
+      "pb": 6,
+      "pg": 5,
+      "name": "RGB",
+      "wr": 0.8428571224212646,
+      "wb": 0.5428571701049805,
+      "rgb": true,
+      "pm": 3,
+      "board": "5D885244"
+    },
+    {
+      "wg": 1,
+      "pr": 3,
+      "pb": 6,
+      "pg": 5,
+      "name": "Tranche 2",
+      "wr": 1,
+      "wb": 1,
+      "rgb": true,
+      "pm": 3,
+      "board": "71C2E6D0"
+    },
+    {
+      "wg": 1,
+      "pr": 3,
+      "pb": 6,
+      "pg": 5,
+      "name": "Tranche 3",
+      "wr": 1,
+      "wb": 1,
+      "rgb": false,
+      "pm": 3,
+      "board": "COM1"
+    },
+    {
+      "wg": 1,
+      "pr": 3,
+      "pb": 6,
+      "pg": 5,
+      "name": "Tranche 4",
+      "wr": 1,
+      "wb": 1,
+      "rgb": false,
+      "pm": 3,
+      "board": "COM1"
+    },
+    {
+      "wg": 1,
+      "pr": 3,
+      "pb": 6,
+      "pg": 5,
+      "name": "Tranche 5",
+      "wr": 1,
+      "wb": 1,
+      "rgb": false,
+      "pm": 3,
+      "board": "COM1"
+    },
+    {
+      "wg": 1,
+      "pr": 3,
+      "pb": 6,
+      "pg": 5,
+      "name": "Tranche 6",
+      "wr": 1,
+      "wb": 1,
+      "rgb": false,
+      "pm": 3,
+      "board": "COM1"
+    },
+    {
+      "wg": 1,
+      "pr": 3,
+      "pb": 6,
+      "pg": 5,
+      "name": "Tranche 7",
+      "wr": 1,
+      "wb": 1,
+      "rgb": false,
+      "pm": 3,
+      "board": "COM1"
+    },
+    {
+      "wg": 1,
+      "pr": 3,
+      "pb": 6,
+      "pg": 5,
+      "name": "Tranche 8",
+      "wr": 1,
+      "wb": 1,
+      "rgb": false,
+      "pm": 3,
+      "board": "COM1"
+    },
+    {
+      "wg": 1,
+      "pr": 3,
+      "pb": 6,
+      "pg": 5,
+      "name": "Tranche 9",
+      "wr": 1,
+      "wb": 1,
+      "rgb": false,
+      "pm": 3,
+      "board": "COM1"
+    },
+    {
+      "wg": 1,
+      "pr": 3,
+      "pb": 6,
+      "pg": 5,
+      "name": "Tranche 10",
+      "wr": 1,
+      "wb": 1,
+      "rgb": false,
+      "pm": 3,
+      "board": "COM1"
+    }
+  ],
+  "boards": [
+    {
+      "name": "nano test",
+      "id": "71C2E6D0"
+    },
+    {
+      "name": "led 1",
+      "id": "5D885244"
+    }
+  ]
+}

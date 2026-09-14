@@ -178,9 +178,14 @@ public class InterfaceCheck {
     check(destination.sequencer.steps.get(0)!=source.sequencer.steps.get(0),"deep copy of steps");
     app.outputsView=true; app.scenesView=true; app.layoutInterface();
     app.availablePorts=new String[]{"TEST0","TEST1","TEST2","TEST3","TEST4","TEST5","TEST6","TEST7"};
+    check("ESP_A".equals(app.extractBoardId("THEATRE_CONSOLE BOARD_ID:ESP_A\nH")),"BOARD_ID startup parsing");
+    app.serialBoardIds.put("ESP_A","TEST1");
+    var routed=app.allChannels.get(app.firstChannel()); routed.outputBoardId="ESP_A";
+    check(app.channelUsesSerialPort(routed),"BOARD_ID routes to serial output");
     app.refreshBoardChoices();
     var board=app.cp5.get(ScrollableList.class,"board_"+app.firstChannel());
-    check(board.getItems().size()==8,"detected ports appear in board menu");
+    check(board.getItems().size()==8,"mapped COM port is not duplicated in board menu");
+    check(board.getItems().toString().contains("ESP_A") && board.getItems().toString().contains("TEST1"),"board label shows BOARD_ID and COM port");
     board.setValue(0);
     check("TEST0".equals(app.allChannels.get(app.firstChannel()).outputBoardId),"board assignment from menu");
     for (var ch:app.allChannels) ch.outputBoardId="USB";

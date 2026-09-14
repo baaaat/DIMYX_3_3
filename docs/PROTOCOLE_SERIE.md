@@ -12,6 +12,7 @@ La connexion utilise **115200 bauds**. Les messages envoyés sont textuels et te
 | Console → contrôleur | `P,<sortie>,<valeur>\n` | Valeur de sortie, échelle 0–4095 |
 | Console → contrôleur | `X\n` | Blackout demandé par l’utilisateur |
 | Contrôleur → console | Texte contenant `THEATRE_CONSOLE` | Identification au démarrage |
+| Contrôleur → console | `BOARD_ID:<identifiant>` (ou `BOARD_ID=<identifiant>`) | Association de l’identifiant matériel avec le port USB |
 | Contrôleur → console | Réponse se terminant par `H` après suppression des espaces | Reconnaissance du heartbeat |
 
 En fonctionnement, les réponses sont lues jusqu’au saut de ligne. Exemple d’envoi : `P,3,2048\n`. Les sorties réglables dans l’interface vont de 0 à 15 ; leur nature physique dépend du firmware.
@@ -26,7 +27,7 @@ En fonctionnement, les réponses sont lues jusqu’au saut de ligne. Exemple d�
 | Tentative de reconnexion au dernier port | 2000 ms |
 | Nouveau scan sans port connu | 5000 ms |
 
-La détection ouvre les ports successivement, attend 1800 ms, lit le message de démarrage, envoie `H`, puis attend 300 ms. Cette recherche est bloquante. Les valeurs de temporisation sont des seuils contrôlés dans la boucle, pas des garanties de temps réel.
+La détection ouvre les ports successivement, attend 1800 ms, lit le message de démarrage, envoie `H`, puis attend 300 ms. Elle mémorise chaque `BOARD_ID` reçu avec le port USB correspondant ; le premier contrôleur reconnu devient la connexion principale. Cette recherche est bloquante. Les valeurs de temporisation sont des seuils contrôlés dans la boucle, pas des garanties de temps réel.
 
 ## Perte et reprise
 
