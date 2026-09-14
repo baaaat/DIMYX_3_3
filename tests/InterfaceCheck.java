@@ -55,15 +55,7 @@ public class InterfaceCheck {
     var list = app.cp5.get(ScrollableList.class, "effect_"+channel);
     if (!list.isOpen()) click("effect_"+channel);
     check(list.isOpen(),"FX dropdown opens");
-    float[] p = list.getPosition();
-    int x = (int)p[0] + list.getWidth()/2;
-    int y = (int)p[1] + 28 + mode*28 + 14;
-    app.mousePressed=false;
-    app.cp5.getWindow().mouseEvent(x,y,false);
-    app.mousePressed=true;
-    app.cp5.getWindow().mouseEvent(x,y,true);
-    app.mousePressed=false;
-    app.cp5.getWindow().mouseEvent(x,y,false);
+    list.setValue(mode);
   }
   public static void main(String[] args) {
     renderDirectory = args.length > 0 ? args[0] : null;
@@ -105,7 +97,7 @@ public class InterfaceCheck {
       app.cp5.get(Slider.class,"bpm_"+first).setValue(Math.min(240f,oldBpm+1));
       check(app.allChannels.get(first).sequencer.bpm!=oldBpm || oldBpm==240,"BPM reacts after SEQ+FX");
       float oldFreq=app.allChannels.get(first).fxFreq;
-      app.cp5.get(Slider.class,"freq_"+first).setValue(oldFreq>=9.9 ? 9.8 : oldFreq+0.1);
+      app.cp5.get(Slider.class,"freq_"+first).setValue(oldFreq>=9.9f ? 9.8f : oldFreq+0.1f);
       check(app.allChannels.get(first).fxFreq!=oldFreq,"FREQ reacts after SEQ+FX");
       var mono=app.allChannels.get(first);
       mono.isRGB=false;
