@@ -151,6 +151,11 @@ public class InterfaceCheck {
       check(app.firstChannel()>first || app.channelsPerPage==10,"channel navigation");
       app.mouseX=app.stepsX(app.firstChannel())+5; app.mouseY=app.stepsY()+5; app.mouseButton=PApplet.LEFT;
       app.mousePressed(); check(app.selectedStepChannel==app.firstChannel(),"step hit after paging");
+      check(app.stepEditMode,"single click enters step edit mode");
+      int editChannel=app.firstChannel();
+      int editStep=app.selectedStepIndex;
+      app.setFaderValue(editChannel,1777);
+      check(app.allChannels.get(editChannel).sequencer.steps.get(editStep).intensity==1777,"step intensity editable from fader");
       click("outputsView"); check(app.outputsView,"routing view button"); bounds();
       check(!app.cp5.getController("fader_"+app.firstChannel()).isVisible(),"routing hides live controls");
       check(app.cp5.getController("rgb_"+app.firstChannel()).isVisible(),"routing shows RGB selector");

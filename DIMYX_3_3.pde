@@ -768,6 +768,13 @@ void drawStepSequencer(int x, int y, int i) {
   
   fill(ch.sequencer.active ? color(0, 255, 0) : color(100));
   ellipse(x + perRow * (sz + gap) - 10, y - 10, 8, 8);
+
+  if (stepEditMode && i == selectedStepChannel && hasSelectedStep()) {
+    fill(0, 200, 255);
+    textAlign(LEFT, BASELINE);
+    textSize(10);
+    text("EDIT " + (selectedStepIndex + 1), x, y - 7);
+  }
   
   int visibleSteps = min(steps.size(), maxSequencerSteps);
   for (int j = 0; j < visibleSteps; j++) {
@@ -999,11 +1006,8 @@ void mousePressed() {
       if (mouseX < x || mouseX >= x + stepSize || mouseY < y || mouseY >= y + stepSize) continue;
       if (j < ch.sequencer.steps.size()) {
         if (mouseButton == LEFT) {
-          selectedStepChannel = i;
-          selectedStepIndex = j;
-          boolean doubleClick = lastClickedStepChannel == i && lastClickedStepIndex == j && millis() - lastStepClickTime < 350;
-          if (doubleClick) startStepEditing(i, j);
-          else stepEditMode = false;
+          // A single click edits the step: fader = intensity, wheel = RGB color.
+          startStepEditing(i, j);
           lastStepClickTime = millis();
           lastClickedStepChannel = i;
           lastClickedStepIndex = j;
@@ -1015,9 +1019,7 @@ void mousePressed() {
       } else if (j == ch.sequencer.steps.size() && mouseButton == LEFT) {
         color col = ch.baseColor;
         ch.sequencer.steps.add(new Step(constrain(ch.manualVal, 0, 4095), red(col), green(col), blue(col)));
-        selectedStepChannel = i;
-        selectedStepIndex = j;
-        stepEditMode = false;
+        startStepEditing(i, j);
       }
       return;
     }

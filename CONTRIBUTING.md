@@ -80,3 +80,6 @@ Validation locale : compilation et tests réussis avec Processing 4.5.5 et Contr
 - Verifier que le heartbeat reste actif en BLIND.
 - Quitter BLIND : l'etat programme doit etre envoye.
 - Verifier que BLACKOUT coupe toujours les sorties meme avec BLIND actif.
+## Validation manuelle guidee
+
+Lancer `.\tests\manual-validation.ps1` sur l'installation cible. Le script demande une confirmation pour chaque famille de tests et ecrit un rapport date dans `build/manual-validation/`. Une validation automatique ne remplace pas cette etape : la tache TODO globale ne doit etre cochee que lorsque le rapport ne contient aucun echec.
