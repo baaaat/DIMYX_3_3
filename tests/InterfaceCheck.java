@@ -169,6 +169,12 @@ public class InterfaceCheck {
     check(destination.sequencer.steps.get(0)!=source.sequencer.steps.get(0),"deep copy of steps");
     app.outputsView=true; app.scenesView=true; app.layoutInterface();
     app.availablePorts=new String[]{"TEST0","TEST1","TEST2","TEST3","TEST4","TEST5","TEST6","TEST7"};
+    app.refreshBoardChoices();
+    var board=app.cp5.get(ScrollableList.class,"board_"+app.firstChannel());
+    check(board.getItems().size()==9,"detected ports appear in board menu");
+    board.setValue(1);
+    check("TEST0".equals(app.allChannels.get(app.firstChannel()).outputBoardId),"board assignment from menu");
+    board.setValue(0);
     app.refreshPortButtons(); bounds(); click("nextPorts"); click("usbPort_6");
     check("TEST6".equals(app.chosenPort),"port choice after paging");
     app.outputsView=false; app.layoutInterface();

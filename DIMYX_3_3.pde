@@ -226,6 +226,17 @@ void placeEffectList(String name, int x, int y, int w, boolean visible) {
   list.setVisible(visible);
   if (!visible) list.close();
 }
+
+void placeBoardList(String name, int x, int y, int w, boolean visible) {
+  ScrollableList list = cp5.get(ScrollableList.class, name);
+  if (list == null) return;
+  list.setPosition(x, y);
+  list.setSize(w, 168);
+  list.setBarHeight(28);
+  list.setItemHeight(28);
+  list.setVisible(visible);
+  if (!visible) list.close();
+}
 void layoutInterface() {
   if (cp5 == null) return;
   cp5.setBroadcast(false);
@@ -260,7 +271,7 @@ void layoutInterface() {
     place("fader_" + i, x + w / 2 - 16, 284, 32, max(48, height - 492), live);
     place("bpm_" + i, x, height - 92, w, 28, live);
     place("clone_" + i, x, height - 52, w, 32, live);
-    place("board_" + i, x, 158, w, 28, visible && outputsView);
+    placeBoardList("board_" + i, x, 158, w, visible && outputsView);
     place("pinMono_" + i, x, 246, w, 32, visible && outputsView);
     place("pinR_" + i, x, 246, w, 32, visible && outputsView);
     place("pinG_" + i, x, 300, w, 32, visible && outputsView);
@@ -1681,17 +1692,6 @@ public void controlEvent(ControlEvent e) {
     return;
   }
 }
-
-public void board_0(String s) { setChannelBoard(0, s); }
-public void board_1(String s) { setChannelBoard(1, s); }
-public void board_2(String s) { setChannelBoard(2, s); }
-public void board_3(String s) { setChannelBoard(3, s); }
-public void board_4(String s) { setChannelBoard(4, s); }
-public void board_5(String s) { setChannelBoard(5, s); }
-public void board_6(String s) { setChannelBoard(6, s); }
-public void board_7(String s) { setChannelBoard(7, s); }
-public void board_8(String s) { setChannelBoard(8, s); }
-public void board_9(String s) { setChannelBoard(9, s); }
 
 void setChannelBoard(int i, String value) {
   String board = trim(value).toUpperCase();
