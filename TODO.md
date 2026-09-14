@@ -20,3 +20,7 @@
 - [ ] Valider l'affectation CARTE par tranche: USB ou ID ESP32, avec routage des pins vers la bonne carte
 - [x] LE BPM mini du seq est de 20
 - [X] L'etat mono ou RGB est sauvegardable.
+- [x] Ajout d'un bouton fire sur chaque tranche. Action: activation momentanée pleine puissance. Shift+fire: on/off bistable
+- [x] Le menu deroulant de carte affiche "USB" comme choix cliquable. Il ne doit afficher réellment que les cartes disponibles.
+- [x] Le menu deroulant de carte doit rester au premier plan par rapport aux champ d'affectation des pins.
+- [x] Bug: l'allumage des led est desormais momentané: allumage environ 2s puis eteint. Revenir au fonctionnement stabel normal

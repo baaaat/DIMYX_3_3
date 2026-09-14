@@ -81,6 +81,9 @@ int scenePanelX = 1200, scenePanelWidth = 260;
 int sceneListY = 244, sceneRowHeight = 38;
 boolean outputsView = false, scenesView = false, narrowLayout = false;
 boolean blindActive = false;
+boolean shiftDown = false;
+long[] fireActiveUntil = new long[10];
+boolean[] fireLatched = new boolean[10];
 boolean whiteBalanceDirty = false;
 long whiteBalanceSaveAt = 0;
 final int stepSize = 22, stepGap = 4;
@@ -224,6 +227,7 @@ void placeEffectList(String name, int x, int y, int w, boolean visible) {
   list.setBarHeight(28);
   list.setItemHeight(28);
   list.setVisible(visible);
+  list.bringToFront();
   if (!visible) list.close();
 }
 
@@ -270,6 +274,7 @@ void layoutInterface() {
     place("min_" + i, x, 248, w, 28, live);
     place("fader_" + i, x + w / 2 - 16, 284, 32, max(48, height - 492), live);
     place("bpm_" + i, x, height - 92, w, 28, live);
+    place("fire_" + i, x, height - 132, w, 32, live);
     place("clone_" + i, x, height - 52, w, 32, live);
     placeBoardList("board_" + i, x, 158, w, visible && outputsView);
     place("pinMono_" + i, x, 246, w, 32, visible && outputsView);
@@ -664,6 +669,7 @@ void loadEsp32Targets() {
 void refreshBoardChoices() {
   ArrayList<String> ids = new ArrayList<String>();
   ids.add("USB");
+  if (availablePorts.length == 0 && !serialConnected) ids.remove("USB");
   for (String port : availablePorts) if (!ids.contains(port)) ids.add(port);
   for (String id : esp32Targets.keySet()) if (!ids.contains(id)) ids.add(id);
   availableBoardIds = ids.toArray(new String[ids.size()]);
@@ -673,6 +679,7 @@ void refreshBoardChoices() {
     if (board == null) continue;
     board.setItems(availableBoardIds);
     board.setValue(boardChoiceIndex(allChannels.get(i).outputBoardId));
+    board.bringToFront();
     board.close();
   }
 }
@@ -888,7 +895,8 @@ void draw() {
         }
         
         float master = channelMaster(ch);
-        float fin = eff * master;
+        boolean fire = fireLatched[i] || now < fireActiveUntil[i];
+        float fin = fire ? 1.0 : eff * master;
         
         if (ch.isRGB) {
           color col = (ch.sequencer.active) ? ch.sequencer.getCurrentColor() : ch.baseColor;
@@ -1251,11 +1259,14 @@ void connectToSerial(String portName) {
 
 void pollSerialResponses() {
   if (!serialConnected || myPort == null || myPort.available() == 0) return;
-  
-  String response = myPort.readStringUntil('\n');
-  if (response != null && trim(response).endsWith("H")) {
-    lastSerialResponseTime = millis();
-    watchdogArmed = true;
+  while (myPort.available() > 0) {
+    String response = myPort.readStringUntil('\n');
+    if (response == null) break;
+    String line = trim(response);
+    if (line.length() > 0) {
+      lastSerialResponseTime = millis();
+      if (line.endsWith("H")) watchdogArmed = true;
+    }
   }
 }
 
@@ -1308,6 +1319,7 @@ void createGUI() {
     capsuleSlider("min_" + i, "MIN", 0, 4095, 0, color(64, 111, 153));
     capsuleSlider("bpm_" + i, "BPM", MIN_SEQUENCER_BPM, 240, 120, color(121, 99, 32));
     capsuleSlider("fader_" + i, "", 0, 4095, 0, color(0, 183, 223));
+    capsuleButton("fire_" + i, "FIRE", color(177, 72, 42));
     new CapsuleTextfield("name_" + i).setText(allChannels.get(i).name).setAutoClear(false).setLabel("");
     ScrollableList board = cp5.addScrollableList("board_" + i);
     board.setBarHeight(28).setItemHeight(28).setItems(availableBoardIds);
@@ -1793,6 +1805,37 @@ void toggleSeq(int i, boolean v) {
   println("Tranche " + i + " : Sequenceur " + (v ? "ACTIVE" : "DESACTIVE"));
 }
 
+void keyPressed() {
+  if (keyCode == SHIFT) shiftDown = true;
+}
+
+void keyReleased() {
+  if (keyCode == SHIFT) shiftDown = false;
+}
+
+void triggerFire(int i) {
+  if (shiftDown) {
+    fireLatched[i] = !fireLatched[i];
+    fireActiveUntil[i] = 0;
+    println("Tranche " + i + " : FIRE " + (fireLatched[i] ? "BISTABLE ON" : "BISTABLE OFF"));
+  } else {
+    fireActiveUntil[i] = millis() + 500;
+    println("Tranche " + i + " : FIRE MOMENTANE");
+  }
+  invalidateChannelOutputCache(allChannels.get(i));
+}
+
+public void fire_0() { triggerFire(0); }
+public void fire_1() { triggerFire(1); }
+public void fire_2() { triggerFire(2); }
+public void fire_3() { triggerFire(3); }
+public void fire_4() { triggerFire(4); }
+public void fire_5() { triggerFire(5); }
+public void fire_6() { triggerFire(6); }
+public void fire_7() { triggerFire(7); }
+public void fire_8() { triggerFire(8); }
+public void fire_9() { triggerFire(9); }
+
 void setSequencerBpm(int i, float v) {
   allChannels.get(i).sequencer.bpm = max(MIN_SEQUENCER_BPM, v);
 }
@@ -1938,6 +1981,8 @@ void applyBlackout(boolean sendCommand) {
     allChannels.get(i).fxFreq = 1.0;
     allChannels.get(i).fxMin = 0;
     allChannels.get(i).sequencer.active = false;
+    fireActiveUntil[i] = 0;
+    fireLatched[i] = false;
     cp5.get(Slider.class, "fader_" + i).setValue(0);
     updateEffectButton(i);
     cp5.get(Slider.class, "freq_" + i).setValue(1.0);

@@ -70,6 +70,12 @@ public class InterfaceCheck {
       app.allChannels.add(ch);
     }
     app.createGUI(); app.updateGUIFromChannels();
+    app.triggerFire(0);
+    check(app.fireActiveUntil[0] > app.millis() && !app.fireLatched[0],"momentary FIRE");
+    app.shiftDown=true; app.triggerFire(0); app.shiftDown=false;
+    check(app.fireLatched[0],"latched FIRE with shift");
+    app.shiftDown=true; app.triggerFire(0); app.shiftDown=false;
+    check(!app.fireLatched[0],"latched FIRE off with shift");
     for(int i=0;i<12;i++) { var scene=app.new Scene("Scene " + (i+1));scene.capture();app.scenes.add(scene); }
     app.selectedSceneIndex=0; app.layoutInterface();
     for(int[] wh: new int[][]{{1600,1000},{1366,768},{1280,800},{1024,600},{800,540}}) {

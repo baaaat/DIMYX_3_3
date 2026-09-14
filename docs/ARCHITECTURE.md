@@ -81,4 +81,6 @@ Le firmware étant absent, le comportement physique du contrôleur ne peut pas �
 
 `channelMaster` centralise la source de niveau : fader manuel ou intensite du pas courant lorsque le sequenceur est actif. Cette logique est identique en mono et en RGB ; la couleur du pas n'est utilisee qu'en RGB.
 
+`sendChannelValue` route chaque commande vers le port serie choisi par la tranche ou vers la cible ESP32 correspondante. `refreshBoardChoices` reconstruit les choix a partir des ports serie detectes et des cibles ESP32 resolues. Le bouton `fire_` force temporairement la sortie a pleine puissance ; Shift active son etat bistable.
+
 Le controle `rgb_` n'est visible que dans la vue SORTIES. Le bouton `effect_` reste cyclique et ne cree aucun controle superpose.
