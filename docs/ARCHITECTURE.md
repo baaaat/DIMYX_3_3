@@ -64,7 +64,7 @@ La pagination des scènes adapte `scenesPerPage` à la hauteur (quatre à huit e
 
 ## Points de maintenance
 
-`ChipView` personnalise le rendu des Toggle ControlP5 RGB/SEQ sans changer leurs callbacks. `cloneChannel` capture un `ChannelState`, puis l’applique à la destination avec copie indépendante des pas. Il remet son index de lecture à zéro, invalide son cache de sortie et quitte l’édition de pas si elle concerne la destination. Les noms et pins ne font pas partie de `ChannelState`. Le clonage est refusé pendant une transition pour éviter que celle-ci écrase le collage. `clearChannelClipboard` annule ou termine l’opération.
+`ChipView` personnalise le rendu des Toggle ControlP5 RGB/SEQ sans changer leurs callbacks. `cloneChannel` capture un `ChannelState`, puis l’applique à la destination avec copie indépendante des pas. Il remet son index de lecture à zéro, invalide son cache de sortie et quitte l’édition de pas si elle concerne la destination. Les noms, pins et mode RGB ne font pas partie de `ChannelState`. Le clonage est refusé pendant une transition pour éviter que celle-ci écrase le collage. `clearChannelClipboard` annule ou termine l’opération.
 
 `createGUI` et `updateGUIFromChannels` suspendent la diffusion des événements ControlP5 pendant la construction ou la synchronisation : les callbacks ne doivent pas accéder à des contrôles encore absents, modifier les données affichées ou éditer un pas sélectionné.
 

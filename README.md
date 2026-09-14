@@ -52,7 +52,7 @@ Les anciennes scènes avec `fx: 4` sont converties au chargement en mode sans ef
 
 Les interrupteurs **RGB** et **SEQ** sont des capsules : curseur rond à gauche et couleur assombrie pour **OFF**, curseur à droite et couleur vive pour **ON**. Le texte indique également l’état.
 
-Cliquer sur **CLONER** sous la tranche source, puis sur **COLLER ICI** sous la destination. **ANNULER** sous la source abandonne la copie. Le collage remplace le niveau manuel, le mode mono/RGB, la couleur, les effets, le tempo et tous les pas par les réglages capturés au clic sur CLONER. Les pas restent indépendants ; un séquenceur actif repart au premier pas. Le nom et les affectations de sorties de la destination sont conservés.
+Cliquer sur **CLONER** sous la tranche source, puis sur **COLLER ICI** sous la destination. **ANNULER** sous la source abandonne la copie. Le collage remplace le niveau manuel, la couleur, les effets, le tempo et tous les pas par les réglages capturés au clic sur CLONER. Les pas restent indépendants ; un séquenceur actif repart au premier pas. Le mode mono/RGB, le nom et les affectations de sorties de la destination sont conservés.
 
 La copie et le collage attendent la fin d’une transition de scène. Le collage agit immédiatement sur la tranche ; utiliser **REC** pour conserver le résultat dans une scène. Aucune scène n’est enregistrée automatiquement par le clonage.
 

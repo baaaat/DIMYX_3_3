@@ -30,6 +30,7 @@ int currentPage = 0;
 int scenesPerPage = 8;
 final int maxSequencerSteps = 10;
 final int sequencerStepsPerRow = 5;
+final float MIN_SEQUENCER_BPM = 20;
 int selectedStepChannel = -1;
 int selectedStepIndex = -1;
 boolean stepEditMode = false;
@@ -450,7 +451,7 @@ class StepSequencer {
 class ChannelState {
   int manualVal, fxMode, fxMin;
   float fxFreq, colorR, colorG, colorB, sequencerBpm;
-  boolean isRGB, sequencerActive;
+  boolean sequencerActive;
   ArrayList<Step> sequencerSteps;
   
   ChannelState() {}
@@ -460,7 +461,6 @@ class ChannelState {
     fxMode = ch.fxMode;
     fxFreq = ch.fxFreq;
     fxMin = ch.fxMin;
-    isRGB = ch.isRGB;
     colorR = red(ch.baseColor);
     colorG = green(ch.baseColor);
     colorB = blue(ch.baseColor);
@@ -477,10 +477,9 @@ class ChannelState {
     ch.fxMode = fxMode;
     ch.fxFreq = fxFreq;
     ch.fxMin = fxMin;
-    ch.isRGB = isRGB;
     ch.baseColor = color(colorR, colorG, colorB);
     ch.sequencer.active = sequencerActive;
-    ch.sequencer.bpm = sequencerBpm;
+    ch.sequencer.bpm = max(MIN_SEQUENCER_BPM, sequencerBpm);
     ch.sequencer.steps.clear();
     for (Step s : sequencerSteps) {
       ch.sequencer.steps.add(new Step(s.intensity, s.colorR, s.colorG, s.colorB));
@@ -493,7 +492,6 @@ class ChannelState {
     r.fxMode = (t < 0.5) ? this.fxMode : o.fxMode;
     r.fxFreq = lerp(this.fxFreq, o.fxFreq, t);
     r.fxMin = int(lerp(this.fxMin, o.fxMin, t));
-    r.isRGB = (t < 0.5) ? this.isRGB : o.isRGB;
     r.colorR = lerp(this.colorR, o.colorR, t);
     r.colorG = lerp(this.colorG, o.colorG, t);
     r.colorB = lerp(this.colorB, o.colorB, t);
@@ -1127,7 +1125,7 @@ void createGUI() {
     capsuleButton("clone_" + i, "CLONER", color(58, 77, 102));
     capsuleSlider("freq_" + i, "FREQ", 0.1, 10, 1, color(64, 111, 153));
     capsuleSlider("min_" + i, "MIN", 0, 4095, 0, color(64, 111, 153));
-    capsuleSlider("bpm_" + i, "BPM", 60, 240, 120, color(121, 99, 32));
+    capsuleSlider("bpm_" + i, "BPM", MIN_SEQUENCER_BPM, 240, 120, color(121, 99, 32));
     capsuleSlider("fader_" + i, "", 0, 4095, 0, color(0, 183, 223));
     new CapsuleTextfield("name_" + i).setText(allChannels.get(i).name).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinMono_" + i).setText(str(allChannels.get(i).pinMono)).setAutoClear(false).setLabel("");
@@ -1332,7 +1330,6 @@ void saveScenes() {
       c.setInt("fx", cs.fxMode);
       c.setFloat("f", cs.fxFreq);
       c.setInt("min", cs.fxMin);
-      c.setBoolean("rgb", cs.isRGB);
       c.setFloat("cr", cs.colorR);
       c.setFloat("cg", cs.colorG);
       c.setFloat("cb", cs.colorB);
@@ -1373,12 +1370,11 @@ void loadScenes() {
         if (cs.fxMode == LEGACY_FX_SEQUENCER) cs.fxMode = FX_MANUAL;
         cs.fxFreq = c.getFloat("f");
         cs.fxMin = c.getInt("min");
-        cs.isRGB = c.getBoolean("rgb");
         cs.colorR = c.getFloat("cr");
         cs.colorG = c.getFloat("cg");
         cs.colorB = c.getFloat("cb");
         cs.sequencerActive = c.getBoolean("sa");
-        cs.sequencerBpm = c.getFloat("bpm");
+        cs.sequencerBpm = max(MIN_SEQUENCER_BPM, c.getFloat("bpm"));
         cs.sequencerSteps = new ArrayList<Step>();
         JSONArray ss = c.getJSONArray("steps");
         for (int m = 0; m < ss.size(); m++) {
@@ -1408,6 +1404,7 @@ void loadChannelConfig() {
       ch.pinR = savedChannel.getInt("pr");
       ch.pinG = savedChannel.getInt("pg");
       ch.pinB = savedChannel.getInt("pb");
+      if (savedChannel.hasKey("rgb")) ch.isRGB = savedChannel.getBoolean("rgb");
       ch.whiteBalanceR = savedChannel.hasKey("wr") ? constrain(savedChannel.getFloat("wr"), 0, 1) : 1.0;
       ch.whiteBalanceG = savedChannel.hasKey("wg") ? constrain(savedChannel.getFloat("wg"), 0, 1) : 1.0;
       ch.whiteBalanceB = savedChannel.hasKey("wb") ? constrain(savedChannel.getFloat("wb"), 0, 1) : 1.0;
@@ -1446,6 +1443,7 @@ void saveChannelConfig() {
     savedChannel.setInt("pr", ch.pinR);
     savedChannel.setInt("pg", ch.pinG);
     savedChannel.setInt("pb", ch.pinB);
+    savedChannel.setBoolean("rgb", ch.isRGB);
     savedChannel.setFloat("wr", ch.whiteBalanceR);
     savedChannel.setFloat("wg", ch.whiteBalanceG);
     savedChannel.setFloat("wb", ch.whiteBalanceB);
@@ -1533,6 +1531,7 @@ void toggleRGB(int i, boolean v) {
   Channel ch = allChannels.get(i);
   if (ch.isRGB != v) {
     ch.isRGB = v;
+    saveChannelConfig();
     invalidateChannelOutputCache(ch);
   }
   syncPinControls(i);
@@ -1582,16 +1581,20 @@ void toggleSeq(int i, boolean v) {
   println("Tranche " + i + " : Sequenceur " + (v ? "ACTIVE" : "DESACTIVE"));
 }
 
-public void bpm_0(float v) { allChannels.get(0).sequencer.bpm = v; }
-public void bpm_1(float v) { allChannels.get(1).sequencer.bpm = v; }
-public void bpm_2(float v) { allChannels.get(2).sequencer.bpm = v; }
-public void bpm_3(float v) { allChannels.get(3).sequencer.bpm = v; }
-public void bpm_4(float v) { allChannels.get(4).sequencer.bpm = v; }
-public void bpm_5(float v) { allChannels.get(5).sequencer.bpm = v; }
-public void bpm_6(float v) { allChannels.get(6).sequencer.bpm = v; }
-public void bpm_7(float v) { allChannels.get(7).sequencer.bpm = v; }
-public void bpm_8(float v) { allChannels.get(8).sequencer.bpm = v; }
-public void bpm_9(float v) { allChannels.get(9).sequencer.bpm = v; }
+void setSequencerBpm(int i, float v) {
+  allChannels.get(i).sequencer.bpm = max(MIN_SEQUENCER_BPM, v);
+}
+
+public void bpm_0(float v) { setSequencerBpm(0, v); }
+public void bpm_1(float v) { setSequencerBpm(1, v); }
+public void bpm_2(float v) { setSequencerBpm(2, v); }
+public void bpm_3(float v) { setSequencerBpm(3, v); }
+public void bpm_4(float v) { setSequencerBpm(4, v); }
+public void bpm_5(float v) { setSequencerBpm(5, v); }
+public void bpm_6(float v) { setSequencerBpm(6, v); }
+public void bpm_7(float v) { setSequencerBpm(7, v); }
+public void bpm_8(float v) { setSequencerBpm(8, v); }
+public void bpm_9(float v) { setSequencerBpm(9, v); }
 
 public void fx_0(int v) { allChannels.get(0).fxMode = v; updateEffectButton(0); }
 public void fx_1(int v) { allChannels.get(1).fxMode = v; updateEffectButton(1); }
