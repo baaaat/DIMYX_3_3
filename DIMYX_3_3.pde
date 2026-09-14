@@ -793,6 +793,8 @@ void setup() {
   
   if (foundPort != null) {
     connectToSerial(foundPort);
+    availablePorts = Serial.list();
+    refreshBoardChoices();
   } else {
     println("Detection auto echouee.");
     nextPortScanTime = millis() + portScanInterval;
@@ -825,7 +827,11 @@ void draw() {
   if (!serialConnected && lastKnownPortName == null && now >= nextPortScanTime) {
     nextPortScanTime = now + portScanInterval;
     String foundPort = findArduinoPort();
-    if (foundPort != null) connectToSerial(foundPort);
+    if (foundPort != null) {
+      connectToSerial(foundPort);
+      availablePorts = Serial.list();
+      refreshBoardChoices();
+    }
   }
   
   for (int i = 0; i < nbChannels; i++) {
@@ -1219,6 +1225,8 @@ void connectToSerial(String portName) {
     serialConnected = true;
     connectedPortName = portName;
     lastKnownPortName = portName;
+    availablePorts = Serial.list();
+    refreshBoardChoices();
     watchdogArmed = false;
     lastSerialResponseTime = millis();
     println("Connecte a " + portName);
