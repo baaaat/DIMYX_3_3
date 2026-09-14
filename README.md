@@ -8,7 +8,7 @@ Console d’éclairage écrite en Processing (mode Java), avec interface Control
 2. Conserver le nom du dossier `DIMYX_3_3` et ouvrir `DIMYX_3_3.pde` dans Processing.
 3. Conserver `channelConfig.json` et `scenes.json` à côté du sketch.
 4. Lancer le sketch. La fenêtre est redimensionnable et sa taille initiale tient compte de l’écran, jusqu’à 1600 × 1000 pixels.
-5. Pour les sorties physiques, connecter un contrôleur compatible avec le [protocole série](docs/PROTOCOLE_SERIE.md). Le choix manuel du port se trouve dans **SORTIES / USB**, puis **USB** sur une fenêtre étroite.
+5. Pour les sorties physiques, connecter un contrôleur compatible avec le [protocole série](docs/PROTOCOLE_SERIE.md). Le choix du port USB se trouve dans **SORTIES / USB**. Les cartes ESP32 valides sont chargées depuis `esp32Boards.json` et peuvent être affectées manuellement à chaque tranche dans **SORTIES**.
 
 Les versions de Processing et ControlP5 utilisées à l’origine ne sont pas renseignées. Le firmware et la référence du matériel ne sont pas fournis. Le lancement et la compatibilité matérielle restent à valider sur l’installation cible.
 
@@ -64,7 +64,7 @@ La disposition est vérifiée pour des surfaces utiles de **800 × 540**, **1024
 
 - Les flèches près du titre parcourent les pages de tranches. Le compteur indique les tranches visibles. Les dix tranches continuent de jouer, même lorsqu’elles sont masquées ; le clonage fonctionne entre pages.
 - À partir de 1000 pixels de largeur utile, les scènes restent à droite. En dessous, **SCENES / TRANCHES** bascule entre les deux vues. Le nombre de scènes par page suit la hauteur disponible.
-- **SORTIES / USB** affiche les affectations mono/RGB et les ports détectés. Sur une fenêtre étroite, **USB / SORTIES** bascule entre ces deux vues. Valider les noms et affectations avec **Entrée**, puis revenir avec **CONSOLE**.
+- **SORTIES / USB** affiche les affectations mono/RGB, la liste des cartes disponibles et les ports détectés. Sur une fenêtre étroite, **USB / SORTIES** bascule entre ces deux vues. Sélectionner une carte dans la liste de chaque tranche, puis valider les pins avec **Entrée** avant de revenir avec **CONSOLE**.
 - **BLACKOUT** reste visible en haut à droite dans toutes les vues.
 
 Le choix de page et de vue n’est pas enregistré dans les JSON. Les [tests d’interface](CONTRIBUTING.md#tests-dinterface) permettent de vérifier la disposition et les interactions sans ouvrir de port physique.

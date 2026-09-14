@@ -85,6 +85,7 @@ long whiteBalanceSaveAt = 0;
 final int stepSize = 22, stepGap = 4;
 PFont interfaceFont;
 String[] availablePorts = new String[0];
+String[] availableBoardIds = {"USB"};
 ArrayList<Button> portButtons = new ArrayList<Button>();
 int portPage = 0;
 final int portsPerPage = 6;
@@ -250,7 +251,7 @@ void layoutInterface() {
     boolean visible = channelVisible(i), live = visible && !outputsView;
     place("name_" + i, x, 88, w, 28, visible);
     placeEffectList("effect_" + i, x, 120, w, live);
-    place("rgb_" + i, x, 136, w, 28, visible && outputsView);
+    place("rgb_" + i, x, 194, w, 28, visible && outputsView);
     place("seq_" + i, x, 184, w, 28, live);
     for (int mode = 0; mode < 4; mode++) place("fxChoice_" + i + "_" + mode, x, 152 + mode * 32, w, 28, false);
     place("freq_" + i, x, 216, w, 28, live);
@@ -258,15 +259,15 @@ void layoutInterface() {
     place("fader_" + i, x + w / 2 - 16, 284, 32, max(48, height - 492), live);
     place("bpm_" + i, x, height - 92, w, 28, live);
     place("clone_" + i, x, height - 52, w, 32, live);
-    place("board_" + i, x, 172, w, 28, visible && outputsView);
-    place("pinMono_" + i, x, 210, w, 32, visible && outputsView);
-    place("pinR_" + i, x, 210, w, 32, visible && outputsView);
-    place("pinG_" + i, x, 278, w, 32, visible && outputsView);
-    place("pinB_" + i, x, 346, w, 32, visible && outputsView);
+    place("board_" + i, x, 158, w, 28, visible && outputsView);
+    place("pinMono_" + i, x, 232, w, 32, visible && outputsView);
+    place("pinR_" + i, x, 232, w, 32, visible && outputsView);
+    place("pinG_" + i, x, 280, w, 32, visible && outputsView);
+    place("pinB_" + i, x, 328, w, 32, visible && outputsView);
     boolean showWhiteBalance = visible && outputsView && allChannels.get(i).isRGB;
-    place("whiteR_" + i, x, 402, w, 28, showWhiteBalance);
-    place("whiteG_" + i, x, 434, w, 28, showWhiteBalance);
-    place("whiteB_" + i, x, 466, w, 28, showWhiteBalance);
+    place("whiteR_" + i, x, 376, w, 28, showWhiteBalance);
+    place("whiteG_" + i, x, 408, w, 28, showWhiteBalance);
+    place("whiteB_" + i, x, 440, w, 28, showWhiteBalance);
     updateChannelControls(i);
     syncPinControls(i);
   }
@@ -352,13 +353,17 @@ void drawConsoleInterface() {
     rect(x - 8, 80, w + 16, height - 96, 18);
     if (outputsView) {
       fill(197, 212, 229);
-      text("CARTE : USB ou ID ESP32", x, 168);
-      text(allChannels.get(i).isRGB ? "SORTIE ROUGE" : "SORTIE MONO", x, 199);
+      text("CARTE", x, 151);
+      text(allChannels.get(i).isRGB ? "SORTIE ROUGE" : "SORTIE MONO", x, 228);
       if (allChannels.get(i).isRGB) {
-        text("SORTIE VERTE", x, 267);
-        text("SORTIE BLEUE", x, 335);
+        text("SORTIE VERTE", x, 276);
+        text("SORTIE BLEUE", x, 324);
       }
-      if (allChannels.get(i).isRGB) text("BALANCE BLANC", x, 396);
+      if (allChannels.get(i).isRGB) {
+        text("BALANCE BLANC R", x, 372);
+        text("BALANCE BLANC V", x, 404);
+        text("BALANCE BLANC B", x, 436);
+      }
       text("Valider avec Entree", x, height - 22);
       continue;
     }
@@ -627,14 +632,45 @@ void loadEsp32Targets() {
       String host = trim(item.getString("host"));
       int port = item.hasKey("port") ? item.getInt("port") : defaultEsp32Port;
       if (id.length() == 0 || host.length() == 0) continue;
-      InetAddress address = InetAddress.getByName(host);
-      esp32Targets.put(id, new Esp32Target(id, host, port, address));
+      try {
+        InetAddress address = InetAddress.getByName(host);
+        esp32Targets.put(id, new Esp32Target(id, host, port, address));
+      } catch (Exception targetError) {
+        println("ESP32 " + id + " indisponible: " + targetError.getMessage());
+      }
     }
     if (!esp32Targets.isEmpty() && wifiSocket == null) wifiSocket = new DatagramSocket();
     println("ESP32 WiFi: " + esp32Targets.size() + " carte(s) active(s)");
+    refreshBoardChoices();
   } catch (Exception e) {
     println("ESP32 WiFi indisponible: " + e.getMessage());
+    refreshBoardChoices();
   }
+}
+
+void refreshBoardChoices() {
+  ArrayList<String> ids = new ArrayList<String>();
+  ids.add("USB");
+  for (String id : esp32Targets.keySet()) if (!ids.contains(id)) ids.add(id);
+  availableBoardIds = ids.toArray(new String[ids.size()]);
+  if (cp5 == null) return;
+  for (int i = 0; i < nbChannels; i++) {
+    ScrollableList board = cp5.get(ScrollableList.class, "board_" + i);
+    if (board == null) continue;
+    board.setItems(availableBoardIds);
+    board.setValue(boardChoiceIndex(allChannels.get(i).outputBoardId));
+    board.close();
+  }
+}
+
+int boardChoiceIndex(String id) {
+  if (id != null) {
+    String wanted = trim(id).toUpperCase();
+    for (int i = 0; i < availableBoardIds.length; i++) {
+      if (availableBoardIds[i].equals(wanted)) return i;
+    }
+  }
+  return 0;
 }
 
 boolean sendEsp32Command(String boardId, String command) {
@@ -921,7 +957,7 @@ void updateGUIFromChannels() {
     cp5.get(Slider.class, "whiteR_" + i).setValue(ch.whiteBalanceR * 100.0);
     cp5.get(Slider.class, "whiteG_" + i).setValue(ch.whiteBalanceG * 100.0);
     cp5.get(Slider.class, "whiteB_" + i).setValue(ch.whiteBalanceB * 100.0);
-    cp5.get(Textfield.class, "board_" + i).setText(ch.outputBoardId);
+    cp5.get(ScrollableList.class, "board_" + i).setValue(boardChoiceIndex(ch.outputBoardId));
     cp5.get(Textfield.class, "pinMono_" + i).setText(str(ch.pinMono));
     cp5.get(Textfield.class, "pinR_" + i).setText(str(ch.pinR));
     cp5.get(Textfield.class, "pinG_" + i).setText(str(ch.pinG));
@@ -1216,7 +1252,12 @@ void createGUI() {
     capsuleSlider("bpm_" + i, "BPM", MIN_SEQUENCER_BPM, 240, 120, color(121, 99, 32));
     capsuleSlider("fader_" + i, "", 0, 4095, 0, color(0, 183, 223));
     new CapsuleTextfield("name_" + i).setText(allChannels.get(i).name).setAutoClear(false).setLabel("");
-    new CapsuleTextfield("board_" + i).setText(allChannels.get(i).outputBoardId).setAutoClear(false).setLabel("");
+    ScrollableList board = cp5.addScrollableList("board_" + i);
+    board.setBarHeight(28).setItemHeight(28).setItems(availableBoardIds);
+    board.setColorBackground(color(48, 73, 99));
+    board.setColorForeground(color(67, 96, 126));
+    board.setColorActive(color(89, 121, 155));
+    board.close();
     new CapsuleTextfield("pinMono_" + i).setText(str(allChannels.get(i).pinMono)).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinR_" + i).setText(str(allChannels.get(i).pinR)).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinG_" + i).setText(str(allChannels.get(i).pinG)).setAutoClear(false).setLabel("");
@@ -1585,6 +1626,13 @@ public void controlEvent(ControlEvent e) {
   if (e.isController() && e.getName().startsWith("usbPort_")) {
     int index = int(e.getName().substring(8));
     if (index >= 0 && index < availablePorts.length) connectToSerial(availablePorts[index]);
+    return;
+  }
+  if (e.isController() && e.getName().startsWith("board_")) {
+    int i = int(e.getName().substring(6));
+    int choice = constrain(round(e.getValue()), 0, availableBoardIds.length - 1);
+    setChannelBoard(i, availableBoardIds[choice]);
+    return;
   }
 }
 
@@ -1652,7 +1700,7 @@ void toggleRGB(int i, boolean v) {
 void syncPinControls(int i) {
   boolean visible = channelVisible(i) && outputsView;
   boolean rgb = allChannels.get(i).isRGB;
-  cp5.get(Textfield.class, "board_" + i).setVisible(visible);
+  cp5.get(ScrollableList.class, "board_" + i).setVisible(visible);
   cp5.get(Textfield.class, "pinMono_" + i).setVisible(visible && !rgb);
   cp5.get(Textfield.class, "pinR_" + i).setVisible(visible && rgb);
   cp5.get(Textfield.class, "pinG_" + i).setVisible(visible && rgb);
@@ -1660,7 +1708,7 @@ void syncPinControls(int i) {
   cp5.get(Slider.class, "whiteR_" + i).setVisible(visible && rgb);
   cp5.get(Slider.class, "whiteG_" + i).setVisible(visible && rgb);
   cp5.get(Slider.class, "whiteB_" + i).setVisible(visible && rgb);
-  String[] fields = {"board_", "pinMono_", "pinR_", "pinG_", "pinB_"};
+  String[] fields = {"pinMono_", "pinR_", "pinG_", "pinB_"};
   for (String field : fields) {
     Textfield input = cp5.get(Textfield.class, field + i);
     if (!input.isVisible()) input.setFocus(false);

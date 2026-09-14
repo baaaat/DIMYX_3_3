@@ -1,6 +1,6 @@
 # ESP32 WiFi
 
-DIMYX peut charger plusieurs cibles ESP32 depuis `esp32Boards.json`.
+DIMYX charge les cibles ESP32 valides depuis `esp32Boards.json` au démarrage. Elles apparaissent automatiquement dans la liste **CARTE** de la vue **SORTIES** ; l’affectation à chaque tranche reste manuelle et est enregistrée dans `channelConfig.json`.
 
 Exemple :
 
@@ -19,4 +19,4 @@ Le transport utilise UDP. Le contrat reprend les commandes texte du lien serie :
 - `P,<pin>,<valeur>\n` : sortie 0..4095
 - `X\n` : blackout
 
-Ce patch prepare le registre et le transport multi-cartes mais ne route encore aucune tranche vers le WiFi. Tant que le patch d'adressage par tranche n'est pas applique, les sorties physiques restent USB.
+Les sorties d’une tranche affectée à `USB` utilisent le contrôleur série ; les autres utilisent la carte ESP32 correspondant à leur identifiant. Une cible dont l’hôte ne peut pas être résolu est ignorée sans masquer les autres cibles valides. La découverte active sur le réseau n’est pas réalisée, car le protocole de découverte du firmware n’est pas fourni.

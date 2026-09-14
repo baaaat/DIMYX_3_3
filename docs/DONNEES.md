@@ -11,9 +11,10 @@ Les fichiers [`channelConfig.json`](../channelConfig.json) et [`scenes.json`](..
 | `name` | Nom affiché |
 | `pm` | Sortie mono |
 | `pr`, `pg`, `pb` | Sorties rouge, verte et bleue |
+| `board` | Carte de sortie : `USB` ou identifiant ESP32 |
 | `rgb` | Activation du mode RGB de la tranche |
 
-Le callback `pin` accepte les sorties de 0 à 15. La configuration initiale réutilise plusieurs fois les mêmes sorties : elle ne décrit pas une affectation distincte pour chaque tranche. La correspondance avec le câblage dépend du contrôleur.
+Le callback `pin` accepte les sorties de 0 à 15 pour USB et jusqu’à 48 pour une carte ESP32. La configuration initiale réutilise plusieurs fois les mêmes sorties : elle ne décrit pas une affectation distincte pour chaque tranche. La correspondance avec le câblage dépend du contrôleur.
 
 Les noms, sorties et mode RGB sont sauvegardés lors de leurs modifications. Ils sont valides pour toutes les scènes. En cas d’échec du chargement de configuration, le code tente de récupérer d’anciens champs dans la première scène, puis écrit une configuration.
 
