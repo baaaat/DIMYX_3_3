@@ -8,7 +8,8 @@
     "wr": 0.8428571224212646,
     "wb": 0.5428571701049805,
     "rgb": false,
-    "pm": 3
+    "pm": 3,
+    "board": "USB"
   },
   {
     "wg": 1,
@@ -19,7 +20,8 @@
     "wr": 1,
     "wb": 1,
     "rgb": false,
-    "pm": 3
+    "pm": 3,
+    "board": "USB"
   },
   {
     "wg": 1,
@@ -30,7 +32,8 @@
     "wr": 1,
     "wb": 1,
     "rgb": false,
-    "pm": 3
+    "pm": 3,
+    "board": "USB"
   },
   {
     "wg": 1,
@@ -41,7 +44,8 @@
     "wr": 1,
     "wb": 1,
     "rgb": false,
-    "pm": 3
+    "pm": 3,
+    "board": "USB"
   },
   {
     "wg": 1,
@@ -52,7 +56,8 @@
     "wr": 1,
     "wb": 1,
     "rgb": false,
-    "pm": 3
+    "pm": 3,
+    "board": "USB"
   },
   {
     "wg": 1,
@@ -63,7 +68,8 @@
     "wr": 1,
     "wb": 1,
     "rgb": false,
-    "pm": 3
+    "pm": 3,
+    "board": "USB"
   },
   {
     "wg": 1,
@@ -74,7 +80,8 @@
     "wr": 1,
     "wb": 1,
     "rgb": false,
-    "pm": 3
+    "pm": 3,
+    "board": "USB"
   },
   {
     "wg": 1,
@@ -85,7 +92,8 @@
     "wr": 1,
     "wb": 1,
     "rgb": false,
-    "pm": 3
+    "pm": 3,
+    "board": "USB"
   },
   {
     "wg": 1,
@@ -96,7 +104,8 @@
     "wr": 1,
     "wb": 1,
     "rgb": false,
-    "pm": 3
+    "pm": 3,
+    "board": "USB"
   },
   {
     "wg": 1,
@@ -107,6 +116,7 @@
     "wr": 1,
     "wb": 1,
     "rgb": false,
-    "pm": 3
+    "pm": 3,
+    "board": "USB"
   }
 ]}
