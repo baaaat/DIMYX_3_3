@@ -1,8 +1,32 @@
 import controlP5.*;
 import processing.serial.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 
 ControlP5 cp5;
 Serial myPort;
+
+class Esp32Target {
+  String id;
+  String host;
+  int port;
+  InetAddress address;
+
+  Esp32Target(String id, String host, int port, InetAddress address) {
+    this.id = id;
+    this.host = host;
+    this.port = port;
+    this.address = address;
+  }
+}
+
+DatagramSocket wifiSocket = null;
+HashMap<String, Esp32Target> esp32Targets = new HashMap<String, Esp32Target>();
+long lastWifiHeartbeatTime = 0;
+final int defaultEsp32Port = 4210;
 
 int nbChannels = 10;
 boolean serialConnected = false;
@@ -234,6 +258,7 @@ void layoutInterface() {
     place("fader_" + i, x + w / 2 - 16, 284, 32, max(48, height - 492), live);
     place("bpm_" + i, x, height - 92, w, 28, live);
     place("clone_" + i, x, height - 52, w, 32, live);
+    place("board_" + i, x, 172, w, 28, visible && outputsView);
     place("pinMono_" + i, x, 210, w, 32, visible && outputsView);
     place("pinR_" + i, x, 210, w, 32, visible && outputsView);
     place("pinG_" + i, x, 278, w, 32, visible && outputsView);
@@ -327,6 +352,7 @@ void drawConsoleInterface() {
     rect(x - 8, 80, w + 16, height - 96, 18);
     if (outputsView) {
       fill(197, 212, 229);
+      text("CARTE : USB ou ID ESP32", x, 168);
       text(allChannels.get(i).isRGB ? "SORTIE ROUGE" : "SORTIE MONO", x, 199);
       if (allChannels.get(i).isRGB) {
         text("SORTIE VERTE", x, 267);
@@ -529,6 +555,7 @@ class Channel {
   int id;
   boolean isRGB;
   int pinMono, pinR, pinG, pinB;
+  String outputBoardId;
   color baseColor;
   int valR, valG, valB, value, manualVal, fxMode, fxMin;
   float fxFreq;
@@ -543,6 +570,7 @@ class Channel {
     pinR = 3;
     pinG = 5;
     pinB = 6;
+    outputBoardId = "USB";
     baseColor = color(255);
     valR = 0;
     valG = 0;
@@ -586,6 +614,75 @@ void markWhiteBalanceDirty() {
   whiteBalanceDirty = true;
   whiteBalanceSaveAt = millis() + 400;
 }
+void loadEsp32Targets() {
+  esp32Targets.clear();
+  try {
+    JSONObject config = loadJSONObject("esp32Boards.json");
+    JSONArray boards = config.getJSONArray("boards");
+    for (int i = 0; i < boards.size(); i++) {
+      JSONObject item = boards.getJSONObject(i);
+      boolean enabled = !item.hasKey("enabled") || item.getBoolean("enabled");
+      if (!enabled) continue;
+      String id = trim(item.getString("id")).toUpperCase();
+      String host = trim(item.getString("host"));
+      int port = item.hasKey("port") ? item.getInt("port") : defaultEsp32Port;
+      if (id.length() == 0 || host.length() == 0) continue;
+      InetAddress address = InetAddress.getByName(host);
+      esp32Targets.put(id, new Esp32Target(id, host, port, address));
+    }
+    if (!esp32Targets.isEmpty() && wifiSocket == null) wifiSocket = new DatagramSocket();
+    println("ESP32 WiFi: " + esp32Targets.size() + " carte(s) active(s)");
+  } catch (Exception e) {
+    println("ESP32 WiFi indisponible: " + e.getMessage());
+  }
+}
+
+boolean sendEsp32Command(String boardId, String command) {
+  if (boardId == null || wifiSocket == null) return false;
+  Esp32Target target = esp32Targets.get(trim(boardId).toUpperCase());
+  if (target == null) return false;
+  try {
+    byte[] data = command.getBytes(StandardCharsets.UTF_8);
+    DatagramPacket packet = new DatagramPacket(data, data.length, target.address, target.port);
+    wifiSocket.send(packet);
+    return true;
+  } catch (Exception e) {
+    println("ESP32 " + target.id + " envoi impossible: " + e.getMessage());
+    return false;
+  }
+}
+
+void sendEsp32Heartbeats(long now) {
+  if (wifiSocket == null || esp32Targets.isEmpty()) return;
+  if (now - lastWifiHeartbeatTime < heartbeatInterval) return;
+  for (Esp32Target target : esp32Targets.values()) sendEsp32Command(target.id, "H\n");
+  lastWifiHeartbeatTime = now;
+}
+boolean channelUsesUsb(Channel ch) {
+  return ch.outputBoardId == null || trim(ch.outputBoardId).length() == 0 || trim(ch.outputBoardId).equalsIgnoreCase("USB");
+}
+
+boolean sendChannelValue(Channel ch, int pin, int value) {
+  String command = "P," + pin + "," + value + "\n";
+  if (channelUsesUsb(ch)) {
+    if (!serialConnected || myPort == null) return false;
+    try {
+      myPort.write(command);
+      return true;
+    } catch (Exception e) {
+      handleConnectionLoss();
+      return false;
+    }
+  }
+  return sendEsp32Command(ch.outputBoardId, command);
+}
+
+void sendAllBlackouts() {
+  if (serialConnected && myPort != null) {
+    try { myPort.write("X\n"); } catch (Exception e) { handleConnectionLoss(); }
+  }
+  for (Esp32Target target : esp32Targets.values()) sendEsp32Command(target.id, "X\n");
+}
 boolean physicalOutputEnabled() {
   return !blindActive;
 }
@@ -614,6 +711,7 @@ void setup() {
   createGUI();
   loadScenes();
   loadChannelConfig();
+  loadEsp32Targets();
   updateGUIFromChannels();
   layoutInterface();
   
@@ -640,6 +738,7 @@ void draw() {
     saveChannelConfig();
   }
   pollSerialResponses();
+  sendEsp32Heartbeats(now);
   
   if (serialConnected && watchdogArmed && now - lastSerialResponseTime > connectionTimeout) {
     handleConnectionLoss();
@@ -674,8 +773,8 @@ void draw() {
   
   drawConsoleInterface();
   
-  if (serialConnected && myPort != null) {
-    if (now - lastHeartbeatTime > heartbeatInterval) {
+  if ((serialConnected && myPort != null) || !esp32Targets.isEmpty()) {
+    if (serialConnected && myPort != null && now - lastHeartbeatTime > heartbeatInterval) {
       try {
         myPort.write("H\n");
       } catch (Exception e) {
@@ -684,7 +783,7 @@ void draw() {
       lastHeartbeatTime = now;
     }
     
-    if (serialConnected && myPort != null && physicalOutputEnabled() && now - lastSendTime > sendInterval) {
+    if (physicalOutputEnabled() && now - lastSendTime > sendInterval) {
       for (int i = 0; i < nbChannels; i++) {
         Channel ch = allChannels.get(i);
         float eff = 1.0;
@@ -714,24 +813,12 @@ void draw() {
           int vg = int(ng * 4095 * fin);
           int vb = int(nb * 4095 * fin);
           
-          if (ch.valR != vr) {
-            myPort.write("P," + ch.pinR + "," + vr + "\n");
-            ch.valR = vr;
-          }
-          if (ch.valG != vg) {
-            myPort.write("P," + ch.pinG + "," + vg + "\n");
-            ch.valG = vg;
-          }
-          if (ch.valB != vb) {
-            myPort.write("P," + ch.pinB + "," + vb + "\n");
-            ch.valB = vb;
-          }
+          if (ch.valR != vr && sendChannelValue(ch, ch.pinR, vr)) ch.valR = vr;
+          if (ch.valG != vg && sendChannelValue(ch, ch.pinG, vg)) ch.valG = vg;
+          if (ch.valB != vb && sendChannelValue(ch, ch.pinB, vb)) ch.valB = vb;
         } else {
           int fv = computeMonoOutput(ch, eff);
-          if (ch.value != fv) {
-            myPort.write("P," + ch.pinMono + "," + fv + "\n");
-            ch.value = fv;
-          }
+          if (ch.value != fv && sendChannelValue(ch, ch.pinMono, fv)) ch.value = fv;
         }
       }
       lastSendTime = now;
@@ -834,6 +921,7 @@ void updateGUIFromChannels() {
     cp5.get(Slider.class, "whiteR_" + i).setValue(ch.whiteBalanceR * 100.0);
     cp5.get(Slider.class, "whiteG_" + i).setValue(ch.whiteBalanceG * 100.0);
     cp5.get(Slider.class, "whiteB_" + i).setValue(ch.whiteBalanceB * 100.0);
+    cp5.get(Textfield.class, "board_" + i).setText(ch.outputBoardId);
     cp5.get(Textfield.class, "pinMono_" + i).setText(str(ch.pinMono));
     cp5.get(Textfield.class, "pinR_" + i).setText(str(ch.pinR));
     cp5.get(Textfield.class, "pinG_" + i).setText(str(ch.pinG));
@@ -1128,6 +1216,7 @@ void createGUI() {
     capsuleSlider("bpm_" + i, "BPM", MIN_SEQUENCER_BPM, 240, 120, color(121, 99, 32));
     capsuleSlider("fader_" + i, "", 0, 4095, 0, color(0, 183, 223));
     new CapsuleTextfield("name_" + i).setText(allChannels.get(i).name).setAutoClear(false).setLabel("");
+    new CapsuleTextfield("board_" + i).setText(allChannels.get(i).outputBoardId).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinMono_" + i).setText(str(allChannels.get(i).pinMono)).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinR_" + i).setText(str(allChannels.get(i).pinR)).setAutoClear(false).setLabel("");
     new CapsuleTextfield("pinG_" + i).setText(str(allChannels.get(i).pinG)).setAutoClear(false).setLabel("");
@@ -1404,6 +1493,7 @@ void loadChannelConfig() {
       ch.pinR = savedChannel.getInt("pr");
       ch.pinG = savedChannel.getInt("pg");
       ch.pinB = savedChannel.getInt("pb");
+      ch.outputBoardId = savedChannel.hasKey("board") ? trim(savedChannel.getString("board")).toUpperCase() : "USB";
       if (savedChannel.hasKey("rgb")) ch.isRGB = savedChannel.getBoolean("rgb");
       ch.whiteBalanceR = savedChannel.hasKey("wr") ? constrain(savedChannel.getFloat("wr"), 0, 1) : 1.0;
       ch.whiteBalanceG = savedChannel.hasKey("wg") ? constrain(savedChannel.getFloat("wg"), 0, 1) : 1.0;
@@ -1443,6 +1533,7 @@ void saveChannelConfig() {
     savedChannel.setInt("pr", ch.pinR);
     savedChannel.setInt("pg", ch.pinG);
     savedChannel.setInt("pb", ch.pinB);
+    savedChannel.setString("board", ch.outputBoardId);
     savedChannel.setBoolean("rgb", ch.isRGB);
     savedChannel.setFloat("wr", ch.whiteBalanceR);
     savedChannel.setFloat("wg", ch.whiteBalanceG);
@@ -1497,6 +1588,27 @@ public void controlEvent(ControlEvent e) {
   }
 }
 
+public void board_0(String s) { setChannelBoard(0, s); }
+public void board_1(String s) { setChannelBoard(1, s); }
+public void board_2(String s) { setChannelBoard(2, s); }
+public void board_3(String s) { setChannelBoard(3, s); }
+public void board_4(String s) { setChannelBoard(4, s); }
+public void board_5(String s) { setChannelBoard(5, s); }
+public void board_6(String s) { setChannelBoard(6, s); }
+public void board_7(String s) { setChannelBoard(7, s); }
+public void board_8(String s) { setChannelBoard(8, s); }
+public void board_9(String s) { setChannelBoard(9, s); }
+
+void setChannelBoard(int i, String value) {
+  String board = trim(value).toUpperCase();
+  if (board.length() == 0) board = "USB";
+  allChannels.get(i).outputBoardId = board;
+  invalidateChannelOutputCache(allChannels.get(i));
+  saveChannelConfig();
+  if (!board.equals("USB") && !esp32Targets.containsKey(board)) {
+    println("Attention: carte ESP32 inconnue pour tranche " + (i + 1) + " : " + board);
+  }
+}
 public void name_0(String s) { setChannelName(0, s); }
 public void name_1(String s) { setChannelName(1, s); }
 public void name_2(String s) { setChannelName(2, s); }
@@ -1540,6 +1652,7 @@ void toggleRGB(int i, boolean v) {
 void syncPinControls(int i) {
   boolean visible = channelVisible(i) && outputsView;
   boolean rgb = allChannels.get(i).isRGB;
+  cp5.get(Textfield.class, "board_" + i).setVisible(visible);
   cp5.get(Textfield.class, "pinMono_" + i).setVisible(visible && !rgb);
   cp5.get(Textfield.class, "pinR_" + i).setVisible(visible && rgb);
   cp5.get(Textfield.class, "pinG_" + i).setVisible(visible && rgb);
@@ -1547,7 +1660,7 @@ void syncPinControls(int i) {
   cp5.get(Slider.class, "whiteR_" + i).setVisible(visible && rgb);
   cp5.get(Slider.class, "whiteG_" + i).setVisible(visible && rgb);
   cp5.get(Slider.class, "whiteB_" + i).setVisible(visible && rgb);
-  String[] fields = {"pinMono_", "pinR_", "pinG_", "pinB_"};
+  String[] fields = {"board_", "pinMono_", "pinR_", "pinG_", "pinB_"};
   for (String field : fields) {
     Textfield input = cp5.get(Textfield.class, field + i);
     if (!input.isVisible()) input.setFocus(false);
@@ -1702,7 +1815,8 @@ public void pinB_9(String s) { pin(9, s, "b"); }
 void pin(int i, String s, String t) {
   try {
     int p = int(s);
-    if (p >= 0 && p <= 15) {
+    int maxPin = channelUsesUsb(allChannels.get(i)) ? 15 : 48;
+    if (p >= 0 && p <= maxPin) {
       if (t.equals("m")) allChannels.get(i).pinMono = p;
       else if (t.equals("r")) allChannels.get(i).pinR = p;
       else if (t.equals("g")) allChannels.get(i).pinG = p;
@@ -1732,9 +1846,7 @@ void applyBlackout(boolean sendCommand) {
     cp5.get(Toggle.class, "seq_" + i).setValue(false);
     updateChannelControls(i);
   }
-  if (sendCommand && serialConnected && myPort != null) {
-    myPort.write("X\n");
-  }
+  if (sendCommand) sendAllBlackouts();
 }
 
 void invalidateOutputCache() {

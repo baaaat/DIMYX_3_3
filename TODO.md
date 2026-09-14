@@ -16,7 +16,7 @@
 - [x] En ruban led RGB, il faut pouvoir atteindre un vrai blanc
 - [x] Valider l'edition des steps: clic simple, intensite au fader et couleur a la roue RGB
 - [x] Renommer "Sortie/USB" en "Sorties"
-- [ ] Préparer le support multi-carte wifi ESP32. 
-- [ ] En plus des pins, il faut pouvoir adresser une carte à une tranche
+- [ ] Valider le socle multi-carte ESP32 WiFi: esp32Boards.json, resolution des hotes et heartbeat UDP
+- [ ] Valider l'affectation CARTE par tranche: USB ou ID ESP32, avec routage des pins vers la bonne carte
 - [x] LE BPM mini du seq est de 20
-- [ ] L'etat mono ou RGB est sauvegardable.
+- [X] L'etat mono ou RGB est sauvegardable.
