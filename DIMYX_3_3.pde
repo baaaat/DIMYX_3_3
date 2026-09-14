@@ -8,6 +8,7 @@ import java.util.HashMap;
 
 ControlP5 cp5;
 Serial myPort;
+HashMap<String, Serial> serialOutputs = new HashMap<String, Serial>();
 
 class Esp32Target {
   String id;
@@ -260,14 +261,14 @@ void layoutInterface() {
     place("bpm_" + i, x, height - 92, w, 28, live);
     place("clone_" + i, x, height - 52, w, 32, live);
     place("board_" + i, x, 158, w, 28, visible && outputsView);
-    place("pinMono_" + i, x, 232, w, 32, visible && outputsView);
-    place("pinR_" + i, x, 232, w, 32, visible && outputsView);
-    place("pinG_" + i, x, 280, w, 32, visible && outputsView);
-    place("pinB_" + i, x, 328, w, 32, visible && outputsView);
+    place("pinMono_" + i, x, 246, w, 32, visible && outputsView);
+    place("pinR_" + i, x, 246, w, 32, visible && outputsView);
+    place("pinG_" + i, x, 300, w, 32, visible && outputsView);
+    place("pinB_" + i, x, 354, w, 32, visible && outputsView);
     boolean showWhiteBalance = visible && outputsView && allChannels.get(i).isRGB;
-    place("whiteR_" + i, x, 376, w, 28, showWhiteBalance);
-    place("whiteG_" + i, x, 408, w, 28, showWhiteBalance);
-    place("whiteB_" + i, x, 440, w, 28, showWhiteBalance);
+    place("whiteR_" + i, x, 410, w, 28, showWhiteBalance);
+    place("whiteG_" + i, x, 442, w, 28, showWhiteBalance);
+    place("whiteB_" + i, x, 474, w, 28, showWhiteBalance);
     updateChannelControls(i);
     syncPinControls(i);
   }
@@ -313,6 +314,7 @@ public void scenesView() { effectMenuChannel = -1; scenesView = !scenesView; lay
 public void refreshPorts() {
   availablePorts = Serial.list();
   portPage = min(portPage, max(0, (availablePorts.length - 1) / portsPerPage));
+  refreshBoardChoices();
   refreshPortButtons();
 }
 public void prevPorts() { portPage = max(0, portPage - 1); refreshPortButtons(); }
@@ -354,15 +356,15 @@ void drawConsoleInterface() {
     if (outputsView) {
       fill(197, 212, 229);
       text("CARTE", x, 151);
-      text(allChannels.get(i).isRGB ? "SORTIE ROUGE" : "SORTIE MONO", x, 228);
+      text(allChannels.get(i).isRGB ? "SORTIE ROUGE" : "SORTIE MONO", x, 242);
       if (allChannels.get(i).isRGB) {
-        text("SORTIE VERTE", x, 276);
-        text("SORTIE BLEUE", x, 324);
+        text("SORTIE VERTE", x, 296);
+        text("SORTIE BLEUE", x, 350);
       }
       if (allChannels.get(i).isRGB) {
-        text("BALANCE BLANC R", x, 372);
-        text("BALANCE BLANC V", x, 404);
-        text("BALANCE BLANC B", x, 436);
+        text("BALANCE BLANC R", x, 406);
+        text("BALANCE BLANC V", x, 438);
+        text("BALANCE BLANC B", x, 470);
       }
       text("Valider avec Entree", x, height - 22);
       continue;
@@ -651,6 +653,7 @@ void loadEsp32Targets() {
 void refreshBoardChoices() {
   ArrayList<String> ids = new ArrayList<String>();
   ids.add("USB");
+  for (String port : availablePorts) if (!ids.contains(port)) ids.add(port);
   for (String id : esp32Targets.keySet()) if (!ids.contains(id)) ids.add(id);
   availableBoardIds = ids.toArray(new String[ids.size()]);
   if (cp5 == null) return;
@@ -698,15 +701,45 @@ boolean channelUsesUsb(Channel ch) {
   return ch.outputBoardId == null || trim(ch.outputBoardId).length() == 0 || trim(ch.outputBoardId).equalsIgnoreCase("USB");
 }
 
+boolean channelUsesSerialPort(Channel ch) {
+  if (channelUsesUsb(ch)) return true;
+  for (String port : availablePorts) if (port.equalsIgnoreCase(ch.outputBoardId)) return true;
+  return false;
+}
+
+boolean hasAvailableSerialOutput() {
+  return availablePorts.length > 0;
+}
+
+Serial serialForChannel(Channel ch) {
+  if (channelUsesUsb(ch)) return myPort;
+  for (String portName : availablePorts) {
+    if (!portName.equalsIgnoreCase(ch.outputBoardId)) continue;
+    if (portName.equalsIgnoreCase(connectedPortName)) return myPort;
+    Serial port = serialOutputs.get(portName);
+    if (port != null) return port;
+    try {
+      port = new Serial(this, portName, 115200);
+      serialOutputs.put(portName, port);
+      return port;
+    } catch (Exception e) {
+      println("Port " + portName + " indisponible: " + e.getMessage());
+      return null;
+    }
+  }
+  return null;
+}
+
 boolean sendChannelValue(Channel ch, int pin, int value) {
   String command = "P," + pin + "," + value + "\n";
-  if (channelUsesUsb(ch)) {
-    if (!serialConnected || myPort == null) return false;
+  if (channelUsesSerialPort(ch)) {
+    Serial port = serialForChannel(ch);
+    if (port == null) return false;
     try {
-      myPort.write(command);
+      port.write(command);
       return true;
     } catch (Exception e) {
-      handleConnectionLoss();
+      if (port == myPort) handleConnectionLoss();
       return false;
     }
   }
@@ -716,6 +749,10 @@ boolean sendChannelValue(Channel ch, int pin, int value) {
 void sendAllBlackouts() {
   if (serialConnected && myPort != null) {
     try { myPort.write("X\n"); } catch (Exception e) { handleConnectionLoss(); }
+  }
+  for (Serial port : serialOutputs.values()) {
+    if (port == myPort) continue;
+    try { port.write("X\n"); } catch (Exception e) { }
   }
   for (Esp32Target target : esp32Targets.values()) sendEsp32Command(target.id, "X\n");
 }
@@ -809,7 +846,7 @@ void draw() {
   
   drawConsoleInterface();
   
-  if ((serialConnected && myPort != null) || !esp32Targets.isEmpty()) {
+  if ((serialConnected && myPort != null) || hasAvailableSerialOutput() || !esp32Targets.isEmpty()) {
     if (serialConnected && myPort != null && now - lastHeartbeatTime > heartbeatInterval) {
       try {
         myPort.write("H\n");
@@ -1178,6 +1215,7 @@ String findArduinoPort() {
 void connectToSerial(String portName) {
   try {
     myPort = new Serial(this, portName, 115200);
+    serialOutputs.put(portName, myPort);
     serialConnected = true;
     connectedPortName = portName;
     lastKnownPortName = portName;
@@ -1653,7 +1691,7 @@ void setChannelBoard(int i, String value) {
   allChannels.get(i).outputBoardId = board;
   invalidateChannelOutputCache(allChannels.get(i));
   saveChannelConfig();
-  if (!board.equals("USB") && !esp32Targets.containsKey(board)) {
+  if (!board.equals("USB") && !esp32Targets.containsKey(board) && !availablePortsContains(board)) {
     println("Attention: carte ESP32 inconnue pour tranche " + (i + 1) + " : " + board);
   }
 }
@@ -1674,6 +1712,11 @@ void setChannelName(int i, String name) {
     allChannels.get(i).name = trimmedName;
     saveChannelConfig();
   }
+}
+
+boolean availablePortsContains(String name) {
+  for (String port : availablePorts) if (port.equalsIgnoreCase(name)) return true;
+  return false;
 }
 
 public void rgb_0(boolean v) { toggleRGB(0, v); }
@@ -1863,7 +1906,7 @@ public void pinB_9(String s) { pin(9, s, "b"); }
 void pin(int i, String s, String t) {
   try {
     int p = int(s);
-    int maxPin = channelUsesUsb(allChannels.get(i)) ? 15 : 48;
+    int maxPin = channelUsesSerialPort(allChannels.get(i)) ? 15 : 48;
     if (p >= 0 && p <= maxPin) {
       if (t.equals("m")) allChannels.get(i).pinMono = p;
       else if (t.equals("r")) allChannels.get(i).pinR = p;
