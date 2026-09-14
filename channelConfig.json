@@ -9,7 +9,7 @@
     "wb": 0.5428571701049805,
     "rgb": true,
     "pm": 3,
-    "board": "USB"
+    "board": "COM4"
   },
   {
     "wg": 1,
@@ -19,9 +19,9 @@
     "name": "Tranche 2",
     "wr": 1,
     "wb": 1,
-    "rgb": false,
+    "rgb": true,
     "pm": 3,
-    "board": "USB"
+    "board": "COM1"
   },
   {
     "wg": 1,
@@ -33,7 +33,7 @@
     "wb": 1,
     "rgb": false,
     "pm": 3,
-    "board": "USB"
+    "board": "COM1"
   },
   {
     "wg": 1,
@@ -45,7 +45,7 @@
     "wb": 1,
     "rgb": false,
     "pm": 3,
-    "board": "USB"
+    "board": "COM1"
   },
   {
     "wg": 1,
@@ -57,7 +57,7 @@
     "wb": 1,
     "rgb": false,
     "pm": 3,
-    "board": "USB"
+    "board": "COM1"
   },
   {
     "wg": 1,
@@ -69,7 +69,7 @@
     "wb": 1,
     "rgb": false,
     "pm": 3,
-    "board": "USB"
+    "board": "COM1"
   },
   {
     "wg": 1,
@@ -81,7 +81,7 @@
     "wb": 1,
     "rgb": false,
     "pm": 3,
-    "board": "USB"
+    "board": "COM1"
   },
   {
     "wg": 1,
@@ -93,7 +93,7 @@
     "wb": 1,
     "rgb": false,
     "pm": 3,
-    "board": "USB"
+    "board": "COM1"
   },
   {
     "wg": 1,
@@ -105,7 +105,7 @@
     "wb": 1,
     "rgb": false,
     "pm": 3,
-    "board": "USB"
+    "board": "COM1"
   },
   {
     "wg": 1,
@@ -117,6 +117,6 @@
     "wb": 1,
     "rgb": false,
     "pm": 3,
-    "board": "USB"
+    "board": "COM1"
   }
 ]}

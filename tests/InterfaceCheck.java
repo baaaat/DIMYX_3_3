@@ -72,6 +72,9 @@ public class InterfaceCheck {
     app.createGUI(); app.updateGUIFromChannels();
     app.triggerFire(0);
     check(app.fireActiveUntil[0] > app.millis() && !app.fireLatched[0],"momentary FIRE");
+    app.firePressedChannel=0; app.firePressUsesShift=false; app.fireHeld[0]=true;
+    app.mouseReleased();
+    check(!app.fireHeld[0] && app.firePressedChannel==-1,"FIRE off on release");
     app.shiftDown=true; app.triggerFire(0); app.shiftDown=false;
     check(app.fireLatched[0],"latched FIRE with shift");
     app.shiftDown=true; app.triggerFire(0); app.shiftDown=false;

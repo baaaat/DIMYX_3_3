@@ -12,7 +12,8 @@
 
 Après chaque modification du projet :
 
-- Mettre à jour TODO.md si une tâche est terminée.
+- La création de taches dans le TODO.md est possible.
+- La validation des taches du TODO.md est possible  seulement après approbation de l'utilisateur.
 - Mettre à jour HARDWARE.md si le matériel ou le pinout change.
 - Mettre à jour README.md si une fonction importante est ajoutée.
 - Maintenir la documentation cohérente avec le code.

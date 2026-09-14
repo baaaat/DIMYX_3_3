@@ -1,5 +1,14 @@
 # Suivi
 
+## Priorités
+- `[P1]` : prioritaire, à traiter en premier
+- `[P2]` : priorité normale
+- `[P3]` : à traiter plus tard
+- `[PAUSE]` : suspendu, ne pas traiter tant qu’il n’est pas réactivé
+
+Ordre de traitement : P1 → P2 → P3. Ignorer les tâches `[PAUSE]`.
+
+
 - [x] Différer le layout du menu FX au relâchement de la souris pour éviter les interactions ControlP5 avec SEQ + FX.
 - [x] Terminer les traitements `effect_` et `fxChoice_` par un `return` dans `controlEvent`.
 
@@ -23,6 +32,7 @@
 - [x] Ajout d'un bouton fire sur chaque tranche. Action: activation momentanée pleine puissance. Shift+fire: on/off bistable
 - [x] Le menu deroulant de carte ne doit pas afficher "USB" comme choix cliquable. Il ne doit afficher réellement que les cartes disponibles. Il peut trier les cartes par mode de connection: USB ou WIFI/bluetooth
 - [x] Le menu deroulant de carte doit rester au premier plan par rapport aux champ d'affectation des pins.
-- [x] Bug: l'allumage des led est desormais momentané: allumage environ 2s puis eteint. Revenir au fonctionnement stable normal: allumage conditionné par fader d'intensité. Sauf si fire
+- [X] Bug: les tranches reagissent bien au mouvements du fader/controles mais les LED s'eteignent apres deux secondes
 - [x] bouton fire trop haut, il chevauche le sequenceur.
-- [ ] reconnaitre un identifiant materiel unique pour chaque carte, permettre le renommage des cartes
+- [ ][PAUSE] reconnaitre un identifiant materiel unique pour chaque carte, permettre le renommage des cartes
+- [ ] fonction fire à ameliorer: on au clic, off au relachement du clic 

@@ -87,6 +87,6 @@ Le sequenceur pilote aussi une tranche mono : dans ce cas, seule l'intensite du 
 
 Le bouton **FX** est cyclique : MAN -> STR -> FEU -> PUL -> MAN.
 
-Dans la vue console, **FIRE** force momentanément la tranche à pleine puissance. Maintenir **Shift** en cliquant sur **FIRE** active ou désactive le mode bistable.
+Dans la vue console, maintenir **FIRE** force la tranche à pleine puissance ; elle s’éteint au relâchement. Maintenir **Shift** en cliquant sur **FIRE** active ou désactive le mode bistable.
 
 Dans **SORTIES**, le menu **CARTE** propose `USB`, les ports série détectés et les identifiants ESP32 valides. Le choix est propre à chaque tranche et les menus restent au-dessus des champs de pins.

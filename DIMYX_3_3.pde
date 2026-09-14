@@ -37,6 +37,7 @@ String lastKnownPortName = null;
 long lastSendTime = 0;
 long lastHeartbeatTime = 0;
 long lastSerialResponseTime = 0;
+String serialResponseBuffer = "";
 long nextReconnectAttemptTime = 0;
 long nextPortScanTime = 0;
 int sendInterval = 33;
@@ -84,6 +85,9 @@ boolean blindActive = false;
 boolean shiftDown = false;
 long[] fireActiveUntil = new long[10];
 boolean[] fireLatched = new boolean[10];
+boolean[] fireHeld = new boolean[10];
+int firePressedChannel = -1;
+boolean firePressUsesShift = false;
 boolean whiteBalanceDirty = false;
 long whiteBalanceSaveAt = 0;
 final int stepSize = 22, stepGap = 4;
@@ -720,6 +724,19 @@ void sendEsp32Heartbeats(long now) {
   for (Esp32Target target : esp32Targets.values()) sendEsp32Command(target.id, "H\n");
   lastWifiHeartbeatTime = now;
 }
+
+void sendSerialHeartbeats(long now) {
+  if (serialOutputs.isEmpty() || now - lastHeartbeatTime <= heartbeatInterval) return;
+  for (Serial port : serialOutputs.values()) {
+    try {
+      port.write("H\n");
+    } catch (Exception e) {
+      if (port == myPort) handleConnectionLoss();
+    }
+  }
+  lastHeartbeatTime = now;
+}
+
 boolean channelUsesUsb(Channel ch) {
   return ch.outputBoardId == null || trim(ch.outputBoardId).length() == 0 || trim(ch.outputBoardId).equalsIgnoreCase("USB");
 }
@@ -874,17 +891,10 @@ void draw() {
   }
   
   drawConsoleInterface();
-  
+
   if ((serialConnected && myPort != null) || hasAvailableSerialOutput() || !esp32Targets.isEmpty()) {
-    if (serialConnected && myPort != null && now - lastHeartbeatTime > heartbeatInterval) {
-      try {
-        myPort.write("H\n");
-      } catch (Exception e) {
-        handleConnectionLoss();
-      }
-      lastHeartbeatTime = now;
-    }
-    
+    sendSerialHeartbeats(now);
+
     if (physicalOutputEnabled() && now - lastSendTime > sendInterval) {
       for (int i = 0; i < nbChannels; i++) {
         Channel ch = allChannels.get(i);
@@ -900,7 +910,7 @@ void draw() {
         }
         
         float master = channelMaster(ch);
-        boolean fire = fireLatched[i] || now < fireActiveUntil[i];
+        boolean fire = fireLatched[i] || fireHeld[i] || now < fireActiveUntil[i];
         float fin = fire ? 1.0 : eff * master;
         
         if (ch.isRGB) {
@@ -1169,6 +1179,22 @@ void mousePressed() {
   if (outputsView || (narrowLayout && scenesView)) return;
   for (int i = 0; i < nbChannels; i++) {
     if (!channelVisible(i)) continue;
+    if (mouseButton == LEFT) {
+      Controller<?> fire = cp5.getController("fire_" + i);
+      if (fire != null && fire.isVisible()) {
+        float[] firePosition = fire.getPosition();
+        if (mouseX >= firePosition[0] && mouseX < firePosition[0] + fire.getWidth()
+          && mouseY >= firePosition[1] && mouseY < firePosition[1] + fire.getHeight()) {
+          firePressedChannel = i;
+          firePressUsesShift = shiftDown;
+          if (!firePressUsesShift) {
+            fireHeld[i] = true;
+            invalidateChannelOutputCache(allChannels.get(i));
+          }
+          return;
+        }
+      }
+    }
     Channel ch = allChannels.get(i);
     float cx = channelX(i) + stripControlWidth / 2, cy = wheelY();
     float wheelDistance = dist(mouseX, mouseY, cx, cy);
@@ -1216,6 +1242,19 @@ void mousePressed() {
   }
 }
 
+void mouseReleased() {
+  if (firePressedChannel < 0) return;
+  int i = firePressedChannel;
+  if (firePressUsesShift) {
+    triggerFire(i);
+  } else {
+    fireHeld[i] = false;
+    invalidateChannelOutputCache(allChannels.get(i));
+  }
+  firePressedChannel = -1;
+  firePressUsesShift = false;
+}
+
 String findArduinoPort() {
   String[] ports = Serial.list();
   for (int i = 0; i < ports.length; i++) {
@@ -1254,6 +1293,7 @@ void connectToSerial(String portName) {
     refreshBoardChoices();
     watchdogArmed = false;
     lastSerialResponseTime = millis();
+    serialResponseBuffer = "";
     println("Connecte a " + portName);
     if (connectionFailSafeActive) resumeLastScene();
   } catch (Exception e) {
@@ -1265,15 +1305,30 @@ void connectToSerial(String portName) {
 
 void pollSerialResponses() {
   if (!serialConnected || myPort == null || myPort.available() == 0) return;
-  while (myPort.available() > 0) {
-    String response = myPort.readStringUntil('\n');
-    if (response == null) break;
-    String line = trim(response);
-    if (line.length() > 0) {
-      lastSerialResponseTime = millis();
-      if (line.endsWith("H")) watchdogArmed = true;
-    }
+  String response = myPort.readString();
+  if (response == null || response.length() == 0) return;
+  serialResponseBuffer += response;
+
+  int newlineIndex = serialResponseBuffer.indexOf('\n');
+  while (newlineIndex >= 0) {
+    String line = trim(serialResponseBuffer.substring(0, newlineIndex));
+    serialResponseBuffer = serialResponseBuffer.substring(newlineIndex + 1);
+    processSerialResponse(line);
+    newlineIndex = serialResponseBuffer.indexOf('\n');
   }
+
+  // Certains firmwares renvoient simplement "H" sans saut de ligne.
+  String pending = trim(serialResponseBuffer);
+  if (pending.endsWith("H")) {
+    processSerialResponse(pending);
+    serialResponseBuffer = "";
+  }
+}
+
+void processSerialResponse(String line) {
+  if (line == null || line.length() == 0) return;
+  lastSerialResponseTime = millis();
+  if (line.endsWith("H")) watchdogArmed = true;
 }
 
 void handleConnectionLoss() {
@@ -1289,6 +1344,7 @@ void handleConnectionLoss() {
   nextReconnectAttemptTime = millis() + reconnectInterval;
   connectedPortName = "Aucun";
   watchdogArmed = false;
+  serialResponseBuffer = "";
   
   if (myPort != null) {
     try {
@@ -1832,16 +1888,16 @@ void triggerFire(int i) {
   invalidateChannelOutputCache(allChannels.get(i));
 }
 
-public void fire_0() { triggerFire(0); }
-public void fire_1() { triggerFire(1); }
-public void fire_2() { triggerFire(2); }
-public void fire_3() { triggerFire(3); }
-public void fire_4() { triggerFire(4); }
-public void fire_5() { triggerFire(5); }
-public void fire_6() { triggerFire(6); }
-public void fire_7() { triggerFire(7); }
-public void fire_8() { triggerFire(8); }
-public void fire_9() { triggerFire(9); }
+public void fire_0() { if (firePressedChannel < 0) triggerFire(0); }
+public void fire_1() { if (firePressedChannel < 0) triggerFire(1); }
+public void fire_2() { if (firePressedChannel < 0) triggerFire(2); }
+public void fire_3() { if (firePressedChannel < 0) triggerFire(3); }
+public void fire_4() { if (firePressedChannel < 0) triggerFire(4); }
+public void fire_5() { if (firePressedChannel < 0) triggerFire(5); }
+public void fire_6() { if (firePressedChannel < 0) triggerFire(6); }
+public void fire_7() { if (firePressedChannel < 0) triggerFire(7); }
+public void fire_8() { if (firePressedChannel < 0) triggerFire(8); }
+public void fire_9() { if (firePressedChannel < 0) triggerFire(9); }
 
 void setSequencerBpm(int i, float v) {
   allChannels.get(i).sequencer.bpm = max(MIN_SEQUENCER_BPM, v);
@@ -1990,6 +2046,7 @@ void applyBlackout(boolean sendCommand) {
     allChannels.get(i).sequencer.active = false;
     fireActiveUntil[i] = 0;
     fireLatched[i] = false;
+    fireHeld[i] = false;
     cp5.get(Slider.class, "fader_" + i).setValue(0);
     updateEffectButton(i);
     cp5.get(Slider.class, "freq_" + i).setValue(1.0);
