@@ -9,6 +9,7 @@ Console d’éclairage écrite en Processing (mode Java), avec interface Control
 3. Conserver `channelConfig.json` et `scenes.json` à côté du sketch.
 4. Lancer le sketch. La fenêtre est redimensionnable et sa taille initiale tient compte de l’écran, jusqu’à 1600 × 1000 pixels.
 5. Pour les sorties physiques, connecter un contrôleur compatible avec le [protocole série](docs/PROTOCOLE_SERIE.md). Le choix du port USB se trouve dans **SORTIES / USB**. Les cartes ESP32 valides sont chargées depuis `esp32Boards.json` et peuvent être affectées manuellement à chaque tranche dans **SORTIES**.
+6. Pour un ESP32-C3 sans routeur, programmer [`firmware/esp32-c3/dimyx_esp32_c3.ino`](firmware/esp32-c3/dimyx_esp32_c3.ino), connecter l'ordinateur au point d'accès créé par la carte, puis suivre le [câblage ESP32-C3](HARDWARE.md) et la [configuration Wi-Fi](docs/ESP32_WIFI.md).
 
 Les versions de Processing et ControlP5 utilisées à l’origine ne sont pas renseignées. Le firmware et la référence du matériel ne sont pas fournis. Le lancement et la compatibilité matérielle restent à valider sur l’installation cible.
 
@@ -74,9 +75,15 @@ Le choix de page et de vue n’est pas enregistré dans les JSON. Les [tests d�
 - [Architecture et repères dans le code](docs/ARCHITECTURE.md)
 - [Données persistantes](docs/DONNEES.md)
 - [Communication et matériel](docs/PROTOCOLE_SERIE.md)
+- [Câblage ESP32-C3 et ruban LED](HARDWARE.md)
+- [Wi-Fi autonome ESP32](docs/ESP32_WIFI.md)
 - [Contribuer et utiliser Git](CONTRIBUTING.md)
 
 Aucune licence de redistribution n’est définie dans ce dépôt ; son choix reste à préciser par le propriétaire.
+
+## Contrôleur ESP32-C3
+
+Le firmware de référence est fourni dans `firmware/esp32-c3/dimyx_esp32_c3.ino`. Il crée un point d'accès Wi-Fi local et pilote un ruban RGB analogique via UDP ; le matériel et le câblage sont décrits dans [HARDWARE.md](HARDWARE.md). Le modèle exact de carte ESP32-C3 et la validation sur matériel réel restent à renseigner.
 ## BLIND, SORTIES et sequenceur mono
 
 Le bouton **SORTIES** ouvre la configuration materielle. Le selecteur **RGB** est visible uniquement dans cette vue et n'apparait plus dans la console.

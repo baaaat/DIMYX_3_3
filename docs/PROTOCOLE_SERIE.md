@@ -1,5 +1,7 @@
 # Communication série
 
+Le dépôt fournit désormais un récepteur ESP32-C3 autonome dans `../firmware/esp32-c3/dimyx_esp32_c3.ino`. Il utilise le même contenu de commandes sur UDP ; les détails d'adresse, de point d'accès et de câblage sont dans [`ESP32_WIFI.md`](ESP32_WIFI.md) et [`../HARDWARE.md`](../HARDWARE.md). Les essais sur la carte réelle restent à effectuer.
+
 Ce document décrit ce que fait le sketch Processing. Le firmware du contrôleur et le schéma de câblage ne sont pas présents dans le dépôt.
 
 ## Commandes observées

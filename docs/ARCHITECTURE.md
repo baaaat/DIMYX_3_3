@@ -77,6 +77,8 @@ La boucle `draw` regroupe plusieurs responsabilités. Un futur découpage pourra
 Le firmware étant absent, le comportement physique du contrôleur ne peut pas être déduit entièrement du sketch. Voir le [contrat série](PROTOCOLE_SERIE.md).
 ## Evolutions console / sorties
 
+Le firmware de référence pour une carte ESP32-C3 est maintenant fourni dans `../firmware/esp32-c3/dimyx_esp32_c3.ino`. Il crée un point d'accès Wi-Fi autonome et reçoit le même protocole UDP texte que celui décrit dans `docs/ESP32_WIFI.md`. Le pinout et les précautions électriques sont documentés dans `../HARDWARE.md`. Le modèle exact de carte C3 n'étant pas renseigné, les GPIO du firmware restent à confirmer sur la carte réelle.
+
 `blindActive` suspend uniquement l'envoi periodique des commandes `P,...`. Le heartbeat serie reste actif. La bascule BLIND invalide le cache de sortie afin de forcer une reemission complete quand on revient en live. Le BLACKOUT conserve son envoi direct `X`.
 
 `channelMaster` centralise la source de niveau : fader manuel ou intensite du pas courant lorsque le sequenceur est actif. Cette logique est identique en mono et en RGB ; la couleur du pas n'est utilisee qu'en RGB.
