@@ -113,7 +113,7 @@ public class MainActivity extends Activity {
             text(c, ch.name, x + 10, y + 27, 15, Color.WHITE);
             int color = Color.rgb(ch.colorR, ch.colorG, ch.colorB);
             p.setColor(color); c.drawCircle(x+w/2f, y+66, 24, p);
-            text(c, ch.sequencer.active ? "SEQ" : (ch.fxMode == 0 ? "MAN" : ch.effectName()), x+10, y+112, 12, Color.LTGRAY);
+            text(c, ch.seq ? "SEQ" : (ch.fx == 0 ? "MAN" : ch.effectName()), x+10, y+112, 12, Color.LTGRAY);
             text(c, String.format(Locale.US, "%d%%", Math.round(ch.gain * 100)), x+w/2f-18, y+112, 12, Color.WHITE);
             float fy = y + 130, fh = h - 160;
             p.setColor(Color.rgb(65,70,84)); c.drawRoundRect(new RectF(x+w/2f-10,fy,x+w/2f+10,fy+fh),10,10,p);
