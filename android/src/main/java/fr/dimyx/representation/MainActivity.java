@@ -31,6 +31,7 @@ public class MainActivity extends Activity {
     private ShowEngine engine;
     private ConsoleView console;
     private int pickKind = 0; // 0 scènes, 1 configuration, 2 cartes
+    private boolean pickerOpen;
     static ShowEngine sharedEngine;
 
     @Override public void onCreate(Bundle state) {
@@ -47,7 +48,7 @@ public class MainActivity extends Activity {
 
     @Override protected void onPause() {
         super.onPause();
-        if (!isFinishing()) {
+        if (!isFinishing() && !pickerOpen) {
             Intent service = new Intent(this, BackgroundOutputService.class);
             if (Build.VERSION.SDK_INT >= 26) startForegroundService(service); else startService(service);
         }
@@ -60,23 +61,31 @@ public class MainActivity extends Activity {
 
     private void pickJson(int kind) {
         pickKind = kind;
+        pickerOpen = true;
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         i.setType("application/json");
         i.addCategory(Intent.CATEGORY_OPENABLE);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         startActivityForResult(i, PICK_JSON);
     }
 
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        pickerOpen = false;
         if (request != PICK_JSON || result != RESULT_OK || data == null) return;
+        if (data.getData() == null) { engine.status = "AUCUN FICHIER SELECTIONNE"; console.invalidate(); return; }
+        try {
+            if (data.getFlags() != 0) getContentResolver().takePersistableUriPermission(data.getData(), data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        } catch (Exception ignored) { }
         try (InputStream in = getContentResolver().openInputStream(data.getData())) {
+            if (in == null) throw new IllegalStateException("Fichier inaccessible");
             String text = readAll(in);
             if (pickKind == 0) engine.loadScenes(text);
             else if (pickKind == 1) engine.loadChannels(text);
             else engine.loadBoards(text);
             pickKind = (pickKind + 1) % 3;
             console.invalidate();
-        } catch (Exception ignored) { engine.status = "FICHIER INVALIDE"; }
+        } catch (Exception ignored) { engine.status = "FICHIER INVALIDE OU INACCESSIBLE"; console.invalidate(); }
     }
 
     private static String readAll(InputStream in) throws Exception {
