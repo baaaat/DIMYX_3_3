@@ -13,7 +13,9 @@ fichiers de spectacle racine.
 - transitions locales ;
 - lecture des effets et séquenceurs ;
 - BLACKOUT permanent ;
-- chargement de `scenes.json`, `channelConfig.json` et `esp32Boards.json` par sélection de fichiers ;
+- découverte automatique des ESP32 par UDP ;
+- chargement de `scenes.json` et `channelConfig.json` par sélection de fichiers ;
+- chargement facultatif de `esp32Boards.json` pour des adresses fixes ;
 - commandes UDP `H`, `P,<pin>,<valeur>` et `X` compatibles avec le firmware actuel.
 
 L’état réseau distingue désormais trois cas :
@@ -41,8 +43,9 @@ projet local peut être ouvert dans Android Studio en sélectionnant le dossier
 Au premier lancement, l’application utilise un spectacle de démonstration
 intégré uniquement pour vérifier l’interface. Le bouton de chargement permet de
 sélectionner successivement `scenes.json`, `channelConfig.json`, puis
-`esp32Boards.json` depuis la tablette. Les fichiers racine du projet ne sont
-jamais réécrits.
+`esp32Boards.json` depuis la tablette. Sans ce dernier fichier, Android diffuse
+`DISCOVER` et apprend automatiquement l’IP et le port annoncés par chaque
+ESP32. Les fichiers racine du projet ne sont jamais réécrits.
 
 La connexion réseau suppose le point d’accès ESP32 décrit dans
 `../docs/ESP32_WIFI.md`. Pour une carte configurée dans `esp32Boards.json`,

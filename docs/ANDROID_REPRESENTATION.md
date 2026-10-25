@@ -14,11 +14,10 @@ et affectations `pm/pr/pg/pb/board`.
 
 Le transport Android envoie les commandes UDP déjà utilisées par le firmware :
 `H`, `P,<pin>,<valeur>` et `X`. Les canaux `USB` ne sont pas envoyés par la
-tablette et restent du ressort de la console PC. `esp32Boards.json` peut être
-chargé après la configuration des tranches afin d’associer chaque identifiant à
-son hôte et son port. Une carte réseau non décrite est provisoirement supposée
-à `192.168.4.1:4210`, ce qui correspond au point d’accès ESP32 de la
-configuration initiale.
+tablette et restent du ressort de la console PC. Android diffuse périodiquement
+`DISCOVER` et apprend automatiquement l’IP et le port annoncés par les ESP32.
+`esp32Boards.json` devient facultatif ; il peut être chargé pour fournir des
+adresses fixes lorsque la découverte UDP n’est pas souhaitée.
 
 ## Règles de représentation
 
