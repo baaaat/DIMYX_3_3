@@ -38,6 +38,8 @@ signalée comme non réseau et n’est pas envoyée par Android.
 Les couleurs RGB du pas courant sont envoyées avec son intensité lorsque le
 séquenceur est actif. Les pins restent ceux de `channelConfig.json` ; avec le
 firmware fourni, seuls les GPIO 4, 5 et 6 sont actuellement acceptés.
+La balance du blanc par tranche (`wr`, `wg`, `wb`) est conservée et appliquée
+au mélange RGB comme dans la console PC.
 
 ## Limites connues
 

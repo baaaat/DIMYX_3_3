@@ -22,6 +22,8 @@ En mode séquenceur RGB, la couleur du pas courant est envoyée avec son
 intensité. Le firmware ESP32-C3 fourni dans ce dépôt accepte actuellement les
 GPIO 4, 5 et 6 ; une affectation différente est signalée dans l’application
 mais ne peut pas être produite par ce firmware sans modification matérielle.
+Les coefficients `wr`, `wg` et `wb` de chaque tranche RGB sont également
+chargés et appliqués à la composante blanche avant l’envoi.
 
 L’état réseau distingue désormais trois cas :
 
