@@ -23,7 +23,7 @@ Le projet contient maintenant une configuration Gradle et le workflow
 `feature/*`, ainsi que chaque pull request, compile un APK debug et le publie
 comme artefact `dimyx-android-debug`.
 
-La compilation utilise Java 17, Android Gradle Plugin 9.4.1 et Gradle 9.6. Le
+La compilation utilise Java 17, Android Gradle Plugin 9.4.1 et Gradle 9.8.1. Le
 projet local peut être ouvert dans Android Studio en sélectionnant le dossier
 `android`.
 
