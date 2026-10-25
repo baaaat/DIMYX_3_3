@@ -7,8 +7,6 @@ fichiers de spectacle racine.
 ## Fonctionnalités
 
 - affichage paysage de cinq tranches, pages 1–5 et 6–10 ;
-- faders tactiles temporaires ;
-- fader = multiplicateur de la source de scène ou du séquenceur ;
 - liste et déclenchement des scènes ;
 - transitions locales ;
 - lecture des effets et séquenceurs ;
@@ -64,13 +62,13 @@ ignorées par Android et restent pilotées par la version PC.
 ## Interaction des niveaux
 
 Le moteur conserve les niveaux, couleurs, effets et pas de la scène active.
-Chaque fader Android ajoute une correction volatile de `0.0` à `1.0` :
+La représentation Android ne propose plus de faders :
 
 ```text
-sortie = scène/séquenceur × correction tactile × effet
+sortie = scène/séquenceur × effet
 ```
 
-Le changement de scène remet toutes les corrections à `1.0`. BLACKOUT coupe
+Le changement de scène applique directement les paramètres enregistrés. BLACKOUT coupe
 immédiatement les sorties et désactive localement la lecture active ; un rappel
 de scène restaure ensuite les paramètres enregistrés.
 

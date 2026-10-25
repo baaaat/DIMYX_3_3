@@ -38,6 +38,7 @@ public class MainActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         engine = new ShowEngine();
         sharedEngine = engine;
         console = new ConsoleView();
@@ -87,9 +88,7 @@ public class MainActivity extends Activity {
 
     private class ConsoleView extends View {
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private long lastFrame;
-        private int page;
-        private int activeFader = -1;
+        private int screen = 0; // 0 configuration, 1 scènes
 
         ConsoleView() { super(MainActivity.this); p.setTypeface(android.graphics.Typeface.create("sans", 0)); }
 
@@ -97,74 +96,39 @@ public class MainActivity extends Activity {
             super.onDraw(c);
             long now = System.currentTimeMillis();
             engine.update(now);
-            drawConsole(c);
-            lastFrame = now;
+            if (screen == 0) drawConfiguration(c); else drawScenesScreen(c);
             postInvalidateDelayed(33);
         }
 
-        private void drawConsole(Canvas c) {
-            int w = getWidth(), h = getHeight();
-            int bg = Color.rgb(32,36,45), panel = Color.rgb(48,54,67);
-            int strip = Color.rgb(66,73,87), track = Color.rgb(36,42,53);
-            int accent = Color.rgb(104,167,177), secondary = Color.rgb(174,185,201);
-            c.drawColor(bg);
-            p.setColor(panel); c.drawRect(0,0,w,58,p);
-            text(c, "DIMYX — REPRÉSENTATION", 16, 24, 17, Color.WHITE);
-            text(c, engine.connectionLabel(), 16, 45, 11, engine.connectionColor());
-            int loadW = Math.max(58, Math.min(92, w / 7));
-            button(c, new RectF(w - 2 * loadW - 94, 12, w - loadW - 48, 48), new String[]{"SCÈNES","CONFIG","CARTES"}[pickKind], panel, secondary, 11);
-            button(c, new RectF(w - loadW - 36, 12, w - 12, 48), "X", Color.rgb(164,47,65), Color.WHITE, 16);
-
-            int margin = 12, gap = 8, top = 72, footer = 48;
-            int sceneW = Math.max(128, Math.min(280, Math.round(w * .29f)));
-            int sceneX = w - margin - sceneW;
-            int leftW = sceneX - margin - gap;
-            p.setColor(panel); c.drawRoundRect(new RectF(margin,top,sceneX-gap,h-footer),10,10,p);
-            p.setColor(panel); c.drawRoundRect(new RectF(sceneX,top,w-margin,h-footer),10,10,p);
-            text(c, "TRANCHES", margin+12, top+25, 14, Color.WHITE);
-            button(c, new RectF(sceneX-132, top+9, sceneX-76, top+37), "1–5", page==0?accent:strip, Color.WHITE, 11);
-            button(c, new RectF(sceneX-70, top+9, sceneX-14, top+37), "6–10", page==1?accent:strip, Color.WHITE, 11);
-            int channelTop = top + 46, channelBottom = h-footer-12;
-            int channelW = Math.max(42, (leftW - 5 * gap) / 5);
-            for (int visible = 0; visible < 5; visible++) {
-                int index = page * 5 + visible;
-                if (index >= engine.channels.size()) break;
-                drawChannel(c, engine.channels.get(index), margin + visible * (channelW + gap), channelTop, channelW, channelBottom-channelTop, strip, track, accent, secondary);
-            }
-            drawScenes(c, sceneX, top, sceneW, h-footer-top, accent, secondary, strip);
-            p.setColor(panel); c.drawRect(0,h-footer,w,h,p);
-            text(c, "SCÈNE : " + engine.currentSceneName(), margin+12, h-19, 13, Color.WHITE);
-            text(c, engine.status, margin+12, h-5, 10, secondary);
-            button(c, new RectF(w-126,h-footer+8,w-12,h-8), "BLACKOUT", Color.rgb(164,47,65), Color.WHITE, 12);
+        private void drawConfiguration(Canvas c) {
+            int w=getWidth(),h=getHeight(), bg=Color.rgb(32,36,45), panel=Color.rgb(48,54,67), accent=Color.rgb(104,167,177), secondary=Color.rgb(174,185,201);
+            c.drawColor(bg); p.setColor(panel); c.drawRect(0,0,w,64,p);
+            text(c,"DIMYX — CONFIGURATION",20,28,19,Color.WHITE); text(c,engine.connectionLabel(),20,50,11,engine.connectionColor());
+            text(c,"Préparer le spectacle puis ouvrir l’écran des scènes.",20,96,14,secondary);
+            int bw=Math.min(520,w-40), x=(w-bw)/2;
+            button(c,new RectF(x,122,x+bw,180),"CHARGER SCENES.JSON",accent,Color.WHITE,15);
+            button(c,new RectF(x,194,x+bw,252),"CHARGER CHANNELCONFIG.JSON",panel,Color.WHITE,15);
+            button(c,new RectF(x,266,x+bw,324),"CHARGER ESP32BOARDS.JSON (OPTIONNEL)",panel,Color.WHITE,13);
+            button(c,new RectF(x,Math.min(h-112,350),x+bw,Math.min(h-54,408)),"OUVRIR LES SCÈNES",Color.rgb(66,73,87),Color.WHITE,15);
+            text(c,"Écran maintenu actif pendant la représentation.",20,h-22,11,secondary);
+            button(c,new RectF(w-126,h-52,w-12,h-12),"BLACKOUT",Color.rgb(164,47,65),Color.WHITE,12);
         }
 
-        private void drawChannel(Canvas c, Channel ch, int x, int y, int w, int h, int strip, int track, int accent, int secondary) {
-            p.setColor(strip); c.drawRoundRect(new RectF(x,y,x+w,y+h), 8,8,p);
-            text(c, "CH " + (engine.channels.indexOf(ch)+1), x+5, y+20, 11, Color.WHITE);
-            text(c, shortName(ch.name,w), x+5, y+35, 9, secondary);
-            int color = Color.rgb(ch.colorR, ch.colorG, ch.colorB);
-            p.setColor(color); c.drawCircle(x+w/2f, y+55, Math.max(9,Math.min(18,w/3f)), p);
-            text(c, String.format(Locale.US, "%d%%", Math.round(ch.visibleLevel() * 100)), x+4, y+88, 11, Color.WHITE);
-            text(c, ch.seq ? "SEQ" : (ch.fx == 0 ? "MAN" : ch.effectName()), x+4, y+103, 9, secondary);
-            float fy = y + 116, fh = Math.max(40, h - 154);
-            p.setColor(track); c.drawRoundRect(new RectF(x+w/2f-7,fy,x+w/2f+7,fy+fh),7,7,p);
-            float knob = fy + fh * (1f - ch.visibleLevel());
-            p.setColor(accent); c.drawRoundRect(new RectF(x+4,knob-7,x+w-4,knob+7),7,7,p);
-            text(c, ch.board.equalsIgnoreCase("USB") || ch.board.matches("COM.*") ? "PC" : "WIFI", x+4, y+h-10, 8, secondary);
+        private void drawScenesScreen(Canvas c) {
+            int w=getWidth(),h=getHeight(), bg=Color.rgb(32,36,45), panel=Color.rgb(48,54,67), secondary=Color.rgb(174,185,201);
+            c.drawColor(bg); p.setColor(panel); c.drawRect(0,0,w,64,p);
+            text(c,"DIMYX — SCÈNES",20,28,19,Color.WHITE); text(c,engine.connectionLabel(),20,50,11,engine.connectionColor());
+            button(c,new RectF(w-250,12,w-138,52),"CONFIG",Color.rgb(66,73,87),Color.WHITE,12);
+            button(c,new RectF(w-126,12,w-12,52),"BLACKOUT",Color.rgb(164,47,65),Color.WHITE,12);
+            int margin=16, top=82, bottom=h-54, gap=10, cols=w<700?2:(w<1100?3:4), rowH=Math.max(58,Math.min(88,(bottom-top)/Math.max(1,Math.min(6,(engine.scenes.size()+cols-1)/cols))));
+            int rows=Math.max(1,(bottom-top)/rowH), perPage=cols*rows, first=engine.scenePage*perPage;
+            for(int i=0;i<perPage&&first+i<engine.scenes.size();i++){int idx=first+i;int col=i%cols,row=i/cols;float bw=(w-2*margin-(cols-1)*gap)/(float)cols;RectF r=new RectF(margin+col*(bw+gap),top+row*rowH,margin+(col+1)*bw-gap,top+row*rowH+rowH-gap);button(c,r,(idx+1)+". "+engine.scenes.get(idx).name,idx==engine.activeScene?Color.rgb(104,167,177):sceneColor(idx),Color.WHITE,Math.max(12,Math.min(18,bw/18)));}
+            text(c,engine.scenes.isEmpty()?"AUCUNE SCÈNE":(first+1)+"–"+Math.min(first+perPage,engine.scenes.size())+" / "+engine.scenes.size()+"    SCÈNE ACTIVE : "+engine.currentSceneName(),margin,h-22,12,secondary);
+            if(engine.scenePage>0)button(c,new RectF(w-210,h-46,w-112,h-10),"PRÉCÉDENT",panel,Color.WHITE,11);
+            if((engine.scenePage+1)*perPage<engine.scenes.size())button(c,new RectF(w-104,h-46,w-12,h-10),"SUIVANT",panel,Color.WHITE,11);
         }
 
-        private void drawScenes(Canvas c, int x, int y, int w, int h, int accent, int secondary, int strip) {
-            text(c, "SCÈNES", x+12, y + 25, 14, Color.WHITE);
-            int row = Math.max(34, Math.min(50, (h-58)/8));
-            int first = engine.scenePage * 8;
-            for (int i=0; i<8 && first+i<engine.scenes.size(); i++) {
-                int idx=first+i; RectF r=new RectF(x+8,y+38+i*row,x+w-8,y+34+(i+1)*row);
-                button(c,r,(idx+1)+". "+engine.scenes.get(idx).name, idx==engine.activeScene ? accent : strip, Color.WHITE, 11);
-            }
-            text(c, engine.scenes.isEmpty()?"AUCUNE SCÈNE":(first+1)+"–"+Math.min(first+8,engine.scenes.size())+" / "+engine.scenes.size(), x+12, y+h-12, 10, secondary);
-        }
-
-        private String shortName(String name, int width) { if (width < 65) return ""; return name.length()>10 ? name.substring(0,9)+"…" : name; }
+        private int sceneColor(int index){int[] colors={Color.rgb(68,87,111),Color.rgb(73,101,105),Color.rgb(92,81,113),Color.rgb(105,82,71),Color.rgb(65,99,87),Color.rgb(83,86,102)};return colors[index%colors.length];}
         private void button(Canvas c, RectF r, String s, int color, int textColor, float size) {
             p.setColor(color); c.drawRoundRect(r,10,10,p);
             p.setTextAlign(Paint.Align.CENTER); text(c,s,r.centerX(),r.centerY()+size*.35f,size,textColor); p.setTextAlign(Paint.Align.LEFT);
@@ -173,26 +137,16 @@ public class MainActivity extends Activity {
 
         @Override public boolean onTouchEvent(MotionEvent e) {
             int w=getWidth(), h=getHeight(); float x=e.getX(), y=e.getY();
-            if (e.getAction()==MotionEvent.ACTION_DOWN) {
-                if ((x>w-140 && y<60) || (x>w-140 && y>h-50)) { engine.blackout(); invalidate(); return true; }
-                int loadW=Math.max(58,Math.min(92,w/7));
-                if (x>w-2*loadW-100 && x<w-loadW-40 && y<60) { pickJson(pickKind); return true; }
-                int margin=12,gap=8,top=72,footer=48,sceneW=Math.max(128,Math.min(280,Math.round(w*.29f))),sceneX=w-margin-sceneW,leftW=sceneX-margin-gap;
-                if (y>top+7 && y<top+45 && x>=sceneX-138 && x<sceneX-74) { page=0; invalidate(); return true; }
-                if (y>top+7 && y<top+45 && x>=sceneX-74 && x<sceneX-8) { page=1; invalidate(); return true; }
-                if (x>=sceneX && y>top+34 && y<h-footer) {
-                    int row=Math.max(34,Math.min(50,((h-footer-top)-58)/8)); int slot=(int)((y-(top+38))/row); int idx=engine.scenePage*8+slot;
-                    if(slot>=0 && idx<engine.scenes.size()){engine.launch(idx);invalidate();} return true;
-                }
-                int channelTop=top+46, channelBottom=h-footer-12,channelW=Math.max(42,(leftW-5*gap)/5);
-                int visible=(int)((x-margin)/(channelW+gap)); int idx=page*5+visible;
-                if(visible>=0&&visible<5&&idx<engine.channels.size()&&y>=channelTop){activeFader=idx; setFader(y,channelTop,channelBottom-channelTop); return true;}
-            } else if ((e.getAction()==MotionEvent.ACTION_MOVE || e.getAction()==MotionEvent.ACTION_UP) && activeFader>=0) {
-                int channelTop=118, channelHeight=h-48-12-channelTop; setFader(y,channelTop,channelHeight); if(e.getAction()==MotionEvent.ACTION_UP) activeFader=-1; return true;
-            }
+            if (e.getAction()!=MotionEvent.ACTION_DOWN) return true;
+            if ((x>w-140 && y<70)||(x>w-140&&y>h-70)) { engine.blackout(); invalidate(); return true; }
+            if(screen==0){int bw=Math.min(520,w-40),x0=(w-bw)/2,openY=Math.min(h-112,350);if(y>=122&&y<180)pickJson(0);else if(y>=194&&y<252)pickJson(1);else if(y>=266&&y<324)pickJson(2);else if(y>=openY&&y<openY+58){screen=1;invalidate();}return true;}
+            if(y<70&&x>w-270&&x<w-130){screen=0;invalidate();return true;}
+            int margin=16,top=82,bottom=h-54,gap=10,cols=w<700?2:(w<1100?3:4),rowH=Math.max(58,Math.min(88,(bottom-top)/Math.max(1,Math.min(6,(engine.scenes.size()+cols-1)/cols)))),rows=Math.max(1,(bottom-top)/rowH),perPage=cols*rows,first=engine.scenePage*perPage;
+            if(y>=top&&y<bottom){int col=(int)((x-margin)/((w-2*margin-(cols-1)*gap)/(float)cols+gap)),row=(int)((y-top)/rowH),idx=first+row*cols+col;if(col>=0&&col<cols&&row>=0&&row<rows&&idx<engine.scenes.size()){engine.launch(idx);invalidate();}return true;}
+            if(y>h-54&&x>w-220&&x<w-110&&engine.scenePage>0){engine.scenePage--;invalidate();return true;}
+            if(y>h-54&&x>w-112&&(engine.scenePage+1)*perPage<engine.scenes.size()){engine.scenePage++;invalidate();return true;}
             return true;
         }
-        private void setFader(float y,int top,int h){ float fy=top+116, fh=Math.max(40,h-154); float t=1f-(y-fy)/fh; engine.setGain(activeFader,Math.max(0,Math.min(1,t))); invalidate(); }
     }
 
     static class Step { int i; int r=255,g=255,b=255; }

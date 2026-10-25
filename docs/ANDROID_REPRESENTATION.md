@@ -22,9 +22,8 @@ adresses fixes lorsque la découverte UDP n’est pas souhaitée.
 ## Règles de représentation
 
 - Une scène déclenchée lance une transition locale de 600 ms.
-- Les corrections tactiles sont des multiplicateurs volatils de 0 à 1.
-- Une correction ne modifie jamais les données JSON.
-- Un changement de scène remet toutes les corrections à 1.
+- L’écran Android ne propose pas de correction manuelle par fader.
+- Un changement de scène applique directement les paramètres enregistrés.
 - Le séquenceur et l’effet continuent leur programmation ; le fader agit
   seulement sur leur niveau de sortie.
 - BLACKOUT envoie `X`, force la sortie locale à zéro et reste accessible dans
