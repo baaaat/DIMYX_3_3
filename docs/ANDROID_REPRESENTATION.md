@@ -41,6 +41,15 @@ firmware fourni, seuls les GPIO 4, 5 et 6 sont actuellement acceptés.
 La balance du blanc par tranche (`wr`, `wg`, `wb`) est conservée et appliquée
 au mélange RGB comme dans la console PC.
 
+## Écran éteint
+
+La sortie ne dépend plus de la boucle de dessin visible. Quand l’Activity est
+suspendue, `BackgroundOutputService` maintient la boucle de calcul, les
+commandes UDP et les heartbeats avec un service Android au premier plan, un
+verrou CPU partiel et un verrou Wi-Fi. Une notification persistante signale
+l’état de sortie active. Le comportement doit encore être validé sur la version
+d’Android et la tablette de représentation utilisées.
+
 ## Limites connues
 
 La configuration Gradle et le workflow GitHub Actions sont présents. La

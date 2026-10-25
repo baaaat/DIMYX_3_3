@@ -17,6 +17,8 @@ fichiers de spectacle racine.
 - chargement de `scenes.json` et `channelConfig.json` par sélection de fichiers ;
 - chargement facultatif de `esp32Boards.json` pour des adresses fixes ;
 - commandes UDP `H`, `P,<pin>,<valeur>` et `X` compatibles avec le firmware actuel.
+- maintien des sorties, animations et heartbeats écran éteint via un service
+  Android au premier plan ;
 
 En mode séquenceur RGB, la couleur du pas courant est envoyée avec son
 intensité. Le firmware ESP32-C3 fourni dans ce dépôt accepte actuellement les
@@ -71,3 +73,8 @@ sortie = scène/séquenceur × correction tactile × effet
 Le changement de scène remet toutes les corrections à `1.0`. BLACKOUT coupe
 immédiatement les sorties et désactive localement la lecture active ; un rappel
 de scène restaure ensuite les paramètres enregistrés.
+
+Lorsque l’Activity est suspendue parce que l’écran s’éteint, le service
+`BackgroundOutputService` reprend la boucle à 33 ms et conserve un verrou CPU et
+Wi-Fi. Une notification persistante indique que la sortie spectacle reste
+active. Le service est arrêté au retour dans l’application.

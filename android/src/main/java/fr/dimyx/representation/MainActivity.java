@@ -12,6 +12,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.os.Build;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -30,6 +31,7 @@ public class MainActivity extends Activity {
     private ShowEngine engine;
     private ConsoleView console;
     private int pickKind = 0; // 0 scènes, 1 configuration, 2 cartes
+    static ShowEngine sharedEngine;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -37,8 +39,22 @@ public class MainActivity extends Activity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         engine = new ShowEngine();
+        sharedEngine = engine;
         console = new ConsoleView();
         setContentView(console);
+    }
+
+    @Override protected void onPause() {
+        super.onPause();
+        if (!isFinishing()) {
+            Intent service = new Intent(this, BackgroundOutputService.class);
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(service); else startService(service);
+        }
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        stopService(new Intent(this, BackgroundOutputService.class));
     }
 
     private void pickJson(int kind) {
@@ -184,7 +200,7 @@ public class MainActivity extends Activity {
     static class Scene { String name; SceneState[] states=new SceneState[10]; }
     static class Channel { String name="Tranche"; boolean rgb; int pm=3,pr=3,pg=5,pb=6; String board="USB"; int colorR=255,colorG=255,colorB=255; float whiteR=1,whiteG=1,whiteB=1; int manual,fx,min; float freq=1,bpm=120; boolean seq; ArrayList<Step> steps=new ArrayList<>(); int current; long nextStep; float gain=1; SceneState target; int startManual,startR,startG,startB; long transitionStart; float visibleLevel(){float source=seq&&!steps.isEmpty()?steps.get(current).i/4095f:manual/4095f;return Math.max(0,Math.min(1,source*gain));} String effectName(){return fx==1?"STR":fx==2?"FEU":fx==3?"PUL":"MAN";} }
 
-    class ShowEngine {
+    static class ShowEngine {
         ArrayList<Channel> channels=new ArrayList<>(); ArrayList<Scene> scenes=new ArrayList<>();
         Map<String,Board> boards=new java.util.concurrent.ConcurrentHashMap<>(); int activeScene=-1,scenePage; boolean blackout; boolean online; String status="SPECTACLE DEMO — ESP32 DECONNECTE";
         long lastHeartbeat;
