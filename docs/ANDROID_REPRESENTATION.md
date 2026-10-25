@@ -35,6 +35,10 @@ point d’accès. Android envoie périodiquement `H` et n’affiche `CONNECTE` q
 la réception d’une réponse `H` de l’ESP32. Une affectation `COMx` ou `USB` est
 signalée comme non réseau et n’est pas envoyée par Android.
 
+Les couleurs RGB du pas courant sont envoyées avec son intensité lorsque le
+séquenceur est actif. Les pins restent ceux de `channelConfig.json` ; avec le
+firmware fourni, seuls les GPIO 4, 5 et 6 sont actuellement acceptés.
+
 ## Limites connues
 
 La configuration Gradle et le workflow GitHub Actions sont présents. La

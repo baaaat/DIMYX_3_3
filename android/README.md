@@ -18,6 +18,11 @@ fichiers de spectacle racine.
 - chargement facultatif de `esp32Boards.json` pour des adresses fixes ;
 - commandes UDP `H`, `P,<pin>,<valeur>` et `X` compatibles avec le firmware actuel.
 
+En mode séquenceur RGB, la couleur du pas courant est envoyée avec son
+intensité. Le firmware ESP32-C3 fourni dans ce dépôt accepte actuellement les
+GPIO 4, 5 et 6 ; une affectation différente est signalée dans l’application
+mais ne peut pas être produite par ce firmware sans modification matérielle.
+
 L’état réseau distingue désormais trois cas :
 
 - `WIFI : AUCUNE CARTE RESEAU` : les tranches sont encore affectées à `USB` ou
