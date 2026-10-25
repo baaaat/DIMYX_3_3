@@ -31,6 +31,11 @@ configuration initiale.
 - BLACKOUT envoie `X`, force la sortie locale à zéro et reste accessible dans
   toutes les vues.
 
+L’état de connexion n’est pas déduit de la seule connexion de la tablette au
+point d’accès. Android envoie périodiquement `H` et n’affiche `CONNECTE` qu’à
+la réception d’une réponse `H` de l’ESP32. Une affectation `COMx` ou `USB` est
+signalée comme non réseau et n’est pas envoyée par Android.
+
 ## Limites connues
 
 La configuration Gradle et le workflow GitHub Actions sont présents. La

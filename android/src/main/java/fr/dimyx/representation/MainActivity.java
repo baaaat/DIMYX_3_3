@@ -88,77 +88,95 @@ public class MainActivity extends Activity {
 
         private void drawConsole(Canvas c) {
             int w = getWidth(), h = getHeight();
-            c.drawColor(Color.rgb(20, 21, 27));
-            text(c, "DIMYX 3.3  /  REPRESENTATION", 24, 32, 20, Color.WHITE);
-            text(c, engine.status, 24, 58, 14, engine.online ? Color.rgb(104,220,167) : Color.rgb(247,169,109));
-            button(c, new RectF(w - 174, 14, w - 24, 58), "BLACKOUT", Color.rgb(191,37,63));
-            String[] labels = {"SCENES", "CONFIG", "CARTES"};
-            button(c, new RectF(w - 330, 14, w - 190, 58), labels[pickKind], Color.rgb(60,76,106));
+            int bg = Color.rgb(32,36,45), panel = Color.rgb(48,54,67);
+            int strip = Color.rgb(66,73,87), track = Color.rgb(36,42,53);
+            int accent = Color.rgb(104,167,177), secondary = Color.rgb(174,185,201);
+            c.drawColor(bg);
+            p.setColor(panel); c.drawRect(0,0,w,58,p);
+            text(c, "DIMYX — REPRÉSENTATION", 16, 24, 17, Color.WHITE);
+            text(c, engine.connectionLabel(), 16, 45, 11, engine.connectionColor());
+            int loadW = Math.max(58, Math.min(92, w / 7));
+            button(c, new RectF(w - 2 * loadW - 94, 12, w - loadW - 48, 48), new String[]{"SCÈNES","CONFIG","CARTES"}[pickKind], panel, secondary, 11);
+            button(c, new RectF(w - loadW - 36, 12, w - 12, 48), "X", Color.rgb(164,47,65), Color.WHITE, 16);
 
-            int left = 20, top = 86, gap = 10;
-            int sceneX = Math.max(w - 300, 610);
-            int channelW = Math.max(92, (sceneX - left - 4 * gap) / 5);
+            int margin = 12, gap = 8, top = 72, footer = 48;
+            int sceneW = Math.max(128, Math.min(280, Math.round(w * .29f)));
+            int sceneX = w - margin - sceneW;
+            int leftW = sceneX - margin - gap;
+            p.setColor(panel); c.drawRoundRect(new RectF(margin,top,sceneX-gap,h-footer),10,10,p);
+            p.setColor(panel); c.drawRoundRect(new RectF(sceneX,top,w-margin,h-footer),10,10,p);
+            text(c, "TRANCHES", margin+12, top+25, 14, Color.WHITE);
+            button(c, new RectF(sceneX-132, top+9, sceneX-76, top+37), "1–5", page==0?accent:strip, Color.WHITE, 11);
+            button(c, new RectF(sceneX-70, top+9, sceneX-14, top+37), "6–10", page==1?accent:strip, Color.WHITE, 11);
+            int channelTop = top + 46, channelBottom = h-footer-12;
+            int channelW = Math.max(42, (leftW - 5 * gap) / 5);
             for (int visible = 0; visible < 5; visible++) {
                 int index = page * 5 + visible;
                 if (index >= engine.channels.size()) break;
-                drawChannel(c, engine.channels.get(index), left + visible * (channelW + gap), top, channelW, h - top - 24);
+                drawChannel(c, engine.channels.get(index), margin + visible * (channelW + gap), channelTop, channelW, channelBottom-channelTop, strip, track, accent, secondary);
             }
-            button(c, new RectF(left, h - 38, left + 82, h - 8), "◀ 1–5", Color.rgb(55,62,78));
-            button(c, new RectF(left + 90, h - 38, left + 172, h - 8), "6–10 ▶", Color.rgb(55,62,78));
-            drawScenes(c, sceneX, top, w - sceneX - 20, h - top - 24);
+            drawScenes(c, sceneX, top, sceneW, h-footer-top, accent, secondary, strip);
+            p.setColor(panel); c.drawRect(0,h-footer,w,h,p);
+            text(c, "SCÈNE : " + engine.currentSceneName(), margin+12, h-19, 13, Color.WHITE);
+            text(c, engine.status, margin+12, h-5, 10, secondary);
+            button(c, new RectF(w-126,h-footer+8,w-12,h-8), "BLACKOUT", Color.rgb(164,47,65), Color.WHITE, 12);
         }
 
-        private void drawChannel(Canvas c, Channel ch, int x, int y, int w, int h) {
-            p.setColor(Color.rgb(35,38,48)); c.drawRoundRect(new RectF(x,y,x+w,y+h), 14,14,p);
-            text(c, ch.name, x + 10, y + 27, 15, Color.WHITE);
+        private void drawChannel(Canvas c, Channel ch, int x, int y, int w, int h, int strip, int track, int accent, int secondary) {
+            p.setColor(strip); c.drawRoundRect(new RectF(x,y,x+w,y+h), 8,8,p);
+            text(c, "CH " + (engine.channels.indexOf(ch)+1), x+5, y+20, 11, Color.WHITE);
+            text(c, shortName(ch.name,w), x+5, y+35, 9, secondary);
             int color = Color.rgb(ch.colorR, ch.colorG, ch.colorB);
-            p.setColor(color); c.drawCircle(x+w/2f, y+66, 24, p);
-            text(c, ch.seq ? "SEQ" : (ch.fx == 0 ? "MAN" : ch.effectName()), x+10, y+112, 12, Color.LTGRAY);
-            text(c, String.format(Locale.US, "%d%%", Math.round(ch.gain * 100)), x+w/2f-18, y+112, 12, Color.WHITE);
-            float fy = y + 130, fh = h - 160;
-            p.setColor(Color.rgb(65,70,84)); c.drawRoundRect(new RectF(x+w/2f-10,fy,x+w/2f+10,fy+fh),10,10,p);
+            p.setColor(color); c.drawCircle(x+w/2f, y+55, Math.max(9,Math.min(18,w/3f)), p);
+            text(c, String.format(Locale.US, "%d%%", Math.round(ch.gain * 100)), x+4, y+88, 11, Color.WHITE);
+            text(c, ch.seq ? "SEQ" : (ch.fx == 0 ? "MAN" : ch.effectName()), x+4, y+103, 9, secondary);
+            float fy = y + 116, fh = Math.max(40, h - 154);
+            p.setColor(track); c.drawRoundRect(new RectF(x+w/2f-7,fy,x+w/2f+7,fy+fh),7,7,p);
             float knob = fy + fh * (1f - ch.gain);
-            p.setColor(Color.rgb(104,220,167)); c.drawRoundRect(new RectF(x+8,knob-9,x+w-8,knob+9),9,9,p);
-            text(c, "TACTILE", x+10, y+h-12, 10, Color.GRAY);
+            p.setColor(accent); c.drawRoundRect(new RectF(x+4,knob-7,x+w-4,knob+7),7,7,p);
+            text(c, ch.board.equalsIgnoreCase("USB") || ch.board.matches("COM.*") ? "PC" : "WIFI", x+4, y+h-10, 8, secondary);
         }
 
-        private void drawScenes(Canvas c, int x, int y, int w, int h) {
-            text(c, "SCÈNES", x, y + 24, 18, Color.WHITE);
-            int row = 48;
+        private void drawScenes(Canvas c, int x, int y, int w, int h, int accent, int secondary, int strip) {
+            text(c, "SCÈNES", x+12, y + 25, 14, Color.WHITE);
+            int row = Math.max(34, Math.min(50, (h-58)/8));
             int first = engine.scenePage * 8;
             for (int i=0; i<8 && first+i<engine.scenes.size(); i++) {
-                int idx=first+i; RectF r=new RectF(x,y+38+i*row,x+w,y+78+i*row);
-                button(c,r,engine.scenes.get(idx).name, idx==engine.activeScene ? Color.rgb(55,98,82) : Color.rgb(48,52,64));
+                int idx=first+i; RectF r=new RectF(x+8,y+38+i*row,x+w-8,y+34+(i+1)*row);
+                button(c,r,(idx+1)+". "+engine.scenes.get(idx).name, idx==engine.activeScene ? accent : strip, Color.WHITE, 11);
             }
-            text(c, (first+1)+"–"+Math.min(first+8,engine.scenes.size())+" / "+engine.scenes.size(), x, y+h-12, 12, Color.GRAY);
+            text(c, engine.scenes.isEmpty()?"AUCUNE SCÈNE":(first+1)+"–"+Math.min(first+8,engine.scenes.size())+" / "+engine.scenes.size(), x+12, y+h-12, 10, secondary);
         }
 
-        private void button(Canvas c, RectF r, String s, int color) {
+        private String shortName(String name, int width) { if (width < 65) return ""; return name.length()>10 ? name.substring(0,9)+"…" : name; }
+        private void button(Canvas c, RectF r, String s, int color, int textColor, float size) {
             p.setColor(color); c.drawRoundRect(r,10,10,p);
-            p.setTextAlign(Paint.Align.CENTER); text(c,s,r.centerX(),r.centerY()+5,13,Color.WHITE); p.setTextAlign(Paint.Align.LEFT);
+            p.setTextAlign(Paint.Align.CENTER); text(c,s,r.centerX(),r.centerY()+size*.35f,size,textColor); p.setTextAlign(Paint.Align.LEFT);
         }
         private void text(Canvas c,String s,float x,float y,float size,int color){p.setTextSize(size);p.setColor(color);c.drawText(s,x,y,p);}
 
         @Override public boolean onTouchEvent(MotionEvent e) {
             int w=getWidth(), h=getHeight(); float x=e.getX(), y=e.getY();
             if (e.getAction()==MotionEvent.ACTION_DOWN) {
-                if (x>w-190 && y<70) { engine.blackout(); invalidate(); return true; }
-                if (x>w-340 && x<w-180 && y<70) { pickJson(pickKind); return true; }
-                if (y>h-50 && x<190) { page=x<90?0:1; invalidate(); return true; }
-                int sceneX=Math.max(w-300,610);
-                if (x>=sceneX && y>86) {
-                    int slot=(int)((y-124)/48); int idx=engine.scenePage*8+slot;
+                if ((x>w-140 && y<60) || (x>w-140 && y>h-50)) { engine.blackout(); invalidate(); return true; }
+                int loadW=Math.max(58,Math.min(92,w/7));
+                if (x>w-2*loadW-100 && x<w-loadW-40 && y<60) { pickJson(pickKind); return true; }
+                int margin=12,gap=8,top=72,footer=48,sceneW=Math.max(128,Math.min(280,Math.round(w*.29f))),sceneX=w-margin-sceneW,leftW=sceneX-margin-gap;
+                if (y>top+7 && y<top+45 && x>=sceneX-138 && x<sceneX-74) { page=0; invalidate(); return true; }
+                if (y>top+7 && y<top+45 && x>=sceneX-74 && x<sceneX-8) { page=1; invalidate(); return true; }
+                if (x>=sceneX && y>top+34 && y<h-footer) {
+                    int row=Math.max(34,Math.min(50,((h-footer-top)-58)/8)); int slot=(int)((y-(top+38))/row); int idx=engine.scenePage*8+slot;
                     if(slot>=0 && idx<engine.scenes.size()){engine.launch(idx);invalidate();} return true;
                 }
-                int left=20, top=86, gap=10, channelW=Math.max(92,(sceneX-left-4*gap)/5);
-                int visible=(int)((x-left)/(channelW+gap)); int idx=page*5+visible;
-                if(visible>=0&&visible<5&&idx<engine.channels.size()){activeFader=idx; setFader(y,top,h); return true;}
+                int channelTop=top+46, channelBottom=h-footer-12,channelW=Math.max(42,(leftW-5*gap)/5);
+                int visible=(int)((x-margin)/(channelW+gap)); int idx=page*5+visible;
+                if(visible>=0&&visible<5&&idx<engine.channels.size()&&y>=channelTop){activeFader=idx; setFader(y,channelTop,channelBottom-channelTop); return true;}
             } else if ((e.getAction()==MotionEvent.ACTION_MOVE || e.getAction()==MotionEvent.ACTION_UP) && activeFader>=0) {
-                setFader(y,86,h); if(e.getAction()==MotionEvent.ACTION_UP) activeFader=-1; return true;
+                int channelTop=118, channelHeight=h-48-12-channelTop; setFader(y,channelTop,channelHeight); if(e.getAction()==MotionEvent.ACTION_UP) activeFader=-1; return true;
             }
             return true;
         }
-        private void setFader(float y,int top,int h){ float t=1f-(y-top-130)/(float)(h-top-184); engine.setGain(activeFader,Math.max(0,Math.min(1,t))); invalidate(); }
+        private void setFader(float y,int top,int h){ float fy=top+116, fh=Math.max(40,h-154); float t=1f-(y-fy)/fh; engine.setGain(activeFader,Math.max(0,Math.min(1,t))); invalidate(); }
     }
 
     static class Step { int i; int r=255,g=255,b=255; }
@@ -173,21 +191,30 @@ public class MainActivity extends Activity {
         ShowEngine(){ for(int i=0;i<10;i++){Channel c=new Channel();c.name="Tranche "+(i+1);channels.add(c);} loadDemo(); }
         void loadDemo(){ Scene s=new Scene();s.name="Démonstration";for(int i=0;i<10;i++){s.states[i]=new SceneState();s.states[i].m=i<2?4095:0;s.states[i].r=255;s.states[i].g=i==1?80:255;s.states[i].b=255;}scenes.add(s); }
         void loadScenes(String raw)throws Exception{JSONArray a=new JSONArray(raw);scenes.clear();for(int n=0;n<a.length();n++){JSONObject j=a.getJSONObject(n);Scene s=new Scene();s.name=j.optString("name","Scène "+(n+1));JSONArray states=j.getJSONArray("states");for(int i=0;i<10;i++){JSONObject q=states.getJSONObject(i);SceneState z=new SceneState();z.m=q.optInt("m");z.fx=q.optInt("fx");z.min=q.optInt("min");z.f=(float)q.optDouble("f",1);z.bpm=(float)q.optDouble("bpm",120);z.r=q.optInt("cr",255);z.g=q.optInt("cg",255);z.b=q.optInt("cb",255);z.sa=q.optBoolean("sa");JSONArray steps=q.optJSONArray("steps");if(steps!=null)for(int k=0;k<steps.length();k++){JSONObject p=steps.getJSONObject(k);Step t=new Step();t.i=p.optInt("i");t.r=p.optInt("r",255);t.g=p.optInt("g",255);t.b=p.optInt("b",255);z.steps.add(t);}s.states[i]=z;}scenes.add(s);}status="SPECTACLE CHARGE — ESP32 DECONNECTE";}
-        void loadChannels(String raw)throws Exception{JSONObject root=new JSONObject(raw);JSONArray a=root.getJSONArray("channels");for(int i=0;i<Math.min(10,a.length());i++){JSONObject q=a.getJSONObject(i);Channel c=channels.get(i);c.name=q.optString("name",c.name);c.rgb=q.optBoolean("rgb",false);c.pm=q.optInt("pm",c.pm);c.pr=q.optInt("pr",c.pr);c.pg=q.optInt("pg",c.pg);c.pb=q.optInt("pb",c.pb);c.board=q.optString("board","USB");if(!c.board.equalsIgnoreCase("USB")&&!boards.containsKey(c.board))boards.put(c.board,new Board(c.board,"192.168.4.1",4210));}status="CONFIGURATION CHARGEE — ESP32 DECONNECTE";}
+        void loadChannels(String raw)throws Exception{JSONObject root=new JSONObject(raw);JSONArray a=root.getJSONArray("channels");for(int i=0;i<Math.min(10,a.length());i++){JSONObject q=a.getJSONObject(i);Channel c=channels.get(i);c.name=q.optString("name",c.name);c.rgb=q.optBoolean("rgb",false);c.pm=q.optInt("pm",c.pm);c.pr=q.optInt("pr",c.pr);c.pg=q.optInt("pg",c.pg);c.pb=q.optInt("pb",c.pb);c.board=q.optString("board","USB");if(!c.board.equalsIgnoreCase("USB")&&!c.board.matches("COM.*")&&!boards.containsKey(c.board))boards.put(c.board,new Board(c.board,"192.168.4.1",4210));}status="CONFIGURATION CHARGEE — AFFECTATIONS CHARGEES";}
         void loadBoards(String raw)throws Exception{JSONObject root=new JSONObject(raw);JSONArray a=root.getJSONArray("boards");for(int i=0;i<a.length();i++){JSONObject q=a.getJSONObject(i);if(!q.optBoolean("enabled",true))continue;String id=q.optString("id",q.optString("board"));if(id.length()>0)boards.put(id,new Board(id,q.optString("host","192.168.4.1"),q.optInt("port",4210)));}status="CARTES CHARGEES — ESP32 DECONNECTE";}
         void launch(int idx){if(idx<0||idx>=scenes.size())return;Scene s=scenes.get(idx);long now=System.currentTimeMillis();for(int i=0;i<10;i++){SceneState z=s.states[i];Channel c=channels.get(i);c.startManual=c.manual;c.startR=c.colorR;c.startG=c.colorG;c.startB=c.colorB;c.target=z;c.transitionStart=now;c.gain=1;}activeScene=idx;blackout=false;status="TRANSITION : "+s.name+" — "+(online?"WIFI OK":"ESP32 DECONNECTE");}
         void setGain(int i,float v){if(i>=0&&i<channels.size())channels.get(i).gain=v;}
         void blackout(){blackout=true;for(Channel c:channels){c.gain=0;c.seq=false;}Network.sendAllBlackout(boards);status="BLACKOUT — "+(online?"WIFI OK":"ESP32 DECONNECTE");}
-        void update(long now){for(Channel c:channels){if(c.target!=null){float t=Math.min(1,(now-c.transitionStart)/600f);c.manual=Math.round(c.startManual+(c.target.m-c.startManual)*t);c.colorR=Math.round(c.startR+(c.target.r-c.startR)*t);c.colorG=Math.round(c.startG+(c.target.g-c.startG)*t);c.colorB=Math.round(c.startB+(c.target.b-c.startB)*t);if(t>=1){SceneState z=c.target;c.target=null;c.fx=z.fx==4?0:z.fx;c.min=z.min;c.freq=z.f;c.bpm=Math.max(20,z.bpm);c.seq=z.sa;c.steps=new ArrayList<>(z.steps);c.current=0;c.nextStep=now;status=status.replace("TRANSITION : ","SCÈNE : ");}}if(c.seq&&!c.steps.isEmpty()&&now>=c.nextStep){c.current=(c.current+1)%c.steps.size();c.nextStep=now+(long)(60000.0/Math.max(20,c.bpm)/4);}}if(now-lastHeartbeat>500){Network.heartbeat(boards);lastHeartbeat=now;}send(now);}
-        void send(long now){if(now%33>18)return;boolean any=false;for(Channel c:channels){float effect=1;float minN=c.min/4095f;if(c.fx==1)effect=(now%(long)(1000/Math.max(.1,c.freq))<500/Math.max(.1,c.freq))?1:minN;else if(c.fx==2)effect=(float)(minN+(1-minN)*((Math.sin(now*.013*c.freq+c.name.hashCode())+1)/2));else if(c.fx==3)effect=(float)(minN+(1-minN)*(Math.sin(now*.005*c.freq)+1)/2);float source=c.seq&&!c.steps.isEmpty()?c.steps.get(c.current).i/4095f:c.manual/4095f;float out=blackout?0:source*c.gain*effect;if(Network.send(c,out))any=true;}if(any)online=true;}
+        void update(long now){for(Channel c:channels){if(c.target!=null){float t=Math.min(1,(now-c.transitionStart)/600f);c.manual=Math.round(c.startManual+(c.target.m-c.startManual)*t);c.colorR=Math.round(c.startR+(c.target.r-c.startR)*t);c.colorG=Math.round(c.startG+(c.target.g-c.startG)*t);c.colorB=Math.round(c.startB+(c.target.b-c.startB)*t);if(t>=1){SceneState z=c.target;c.target=null;c.fx=z.fx==4?0:z.fx;c.min=z.min;c.freq=z.f;c.bpm=Math.max(20,z.bpm);c.seq=z.sa;c.steps=new ArrayList<>(z.steps);c.current=0;c.nextStep=now;status=status.replace("TRANSITION : ","SCÈNE : ");}}if(c.seq&&!c.steps.isEmpty()&&now>=c.nextStep){c.current=(c.current+1)%c.steps.size();c.nextStep=now+(long)(60000.0/Math.max(20,c.bpm)/4);}}if(now-lastHeartbeat>500){Network.heartbeat(boards);lastHeartbeat=now;}online=Network.isConnected(boards,now);send(now);}
+        void send(long now){if(now%33>18)return;for(Channel c:channels){float effect=1;float minN=c.min/4095f;if(c.fx==1)effect=(now%(long)(1000/Math.max(.1,c.freq))<500/Math.max(.1,c.freq))?1:minN;else if(c.fx==2)effect=(float)(minN+(1-minN)*((Math.sin(now*.013*c.freq+c.name.hashCode())+1)/2));else if(c.fx==3)effect=(float)(minN+(1-minN)*(Math.sin(now*.005*c.freq)+1)/2);float source=c.seq&&!c.steps.isEmpty()?c.steps.get(c.current).i/4095f:c.manual/4095f;float out=blackout?0:source*c.gain*effect;Network.send(c,out);}}
+        String currentSceneName(){return activeScene>=0&&activeScene<scenes.size()?scenes.get(activeScene).name:"AUCUNE";}
+        String connectionLabel(){if(boards.isEmpty())return "WIFI : AUCUNE CARTE RESEAU — vérifier les affectations";return online?"WIFI : CONNECTE — réponse ESP32 reçue":"WIFI : EN ATTENTE — aucune réponse ESP32";}
+        int connectionColor(){return online?Color.rgb(104,167,177):Color.rgb(247,169,109);}
     }
     static class Board { String id,host; int port; Board(String i,String h,int p){id=i;host=h;port=p;} }
     static class Network {
         static final java.util.concurrent.ExecutorService pool=java.util.concurrent.Executors.newSingleThreadExecutor();
         static Map<String,Board> boards= new HashMap<>();
-        static void heartbeat(Map<String,Board> b){boards=b;pool.submit(()->{for(Board x:b.values())sendRaw(x,"H\n");});}
+        static volatile long lastReplyAt;
+        static volatile boolean receiverStarted;
+        static java.net.DatagramSocket socket;
+        static synchronized void ensureSocket(){if(socket!=null)return;try{socket=new java.net.DatagramSocket();socket.setSoTimeout(250);}catch(Exception ignored){return;}if(!receiverStarted){receiverStarted=true;Thread t=new Thread(Network::receiveLoop,"dimyx-udp-receiver");t.setDaemon(true);t.start();}}
+        static void heartbeat(Map<String,Board> b){boards=b;ensureSocket();for(Board x:b.values())sendRaw(x,"H\n");}
         static void sendAllBlackout(Map<String,Board> b){for(Board x:b.values())sendRaw(x,"X\n");}
-        static boolean send(Channel c,float out){if(c.board==null||c.board.equalsIgnoreCase("USB"))return false;Board b=boards.get(c.board);if(b==null){b=new Board(c.board,"192.168.4.1",4210);boards.put(c.board,b);}if(c.rgb){sendRaw(b,"P,"+c.pr+","+Math.round(out*4095*c.colorR/255f)+"\n");sendRaw(b,"P,"+c.pg+","+Math.round(out*4095*c.colorG/255f)+"\n");sendRaw(b,"P,"+c.pb+","+Math.round(out*4095*c.colorB/255f)+"\n");}else sendRaw(b,"P,"+c.pm+","+Math.round(out*4095)+"\n");return true;}
-        static void sendRaw(Board b,String msg){try(java.net.DatagramSocket s=new java.net.DatagramSocket()){byte[] data=msg.getBytes(StandardCharsets.UTF_8);s.send(new java.net.DatagramPacket(data,data.length,java.net.InetAddress.getByName(b.host),b.port));}catch(Exception ignored){}}
+        static boolean send(Channel c,float out){if(c.board==null||c.board.equalsIgnoreCase("USB")||c.board.matches("COM.*"))return false;Board b=boards.get(c.board);if(b==null)return false;ensureSocket();if(c.rgb){sendRaw(b,"P,"+c.pr+","+Math.round(out*4095*c.colorR/255f)+"\n");sendRaw(b,"P,"+c.pg+","+Math.round(out*4095*c.colorG/255f)+"\n");sendRaw(b,"P,"+c.pb+","+Math.round(out*4095*c.colorB/255f)+"\n");}else sendRaw(b,"P,"+c.pm+","+Math.round(out*4095)+"\n");return true;}
+        static void sendRaw(Board b,String msg){ensureSocket();if(socket==null)return;pool.submit(()->{try{byte[] data=msg.getBytes(StandardCharsets.UTF_8);socket.send(new java.net.DatagramPacket(data,data.length,java.net.InetAddress.getByName(b.host),b.port));}catch(Exception ignored){}});}
+        static void receiveLoop(){byte[] buffer=new byte[128];while(socket!=null&&!socket.isClosed()){try{java.net.DatagramPacket packet=new java.net.DatagramPacket(buffer,buffer.length);socket.receive(packet);String response=new String(packet.getData(),packet.getOffset(),packet.getLength(),StandardCharsets.UTF_8).trim();if(response.endsWith("H")||response.contains("DIMYX_DISCOVERY"))lastReplyAt=System.currentTimeMillis();}catch(java.net.SocketTimeoutException ignored){}catch(Exception ignored){break;}}}
+        static boolean isConnected(Map<String,Board> targets,long now){return !targets.isEmpty()&&lastReplyAt>0&&now-lastReplyAt<1800;}
     }
 }

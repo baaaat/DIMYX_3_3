@@ -16,6 +16,15 @@ fichiers de spectacle racine.
 - chargement de `scenes.json`, `channelConfig.json` et `esp32Boards.json` par sélection de fichiers ;
 - commandes UDP `H`, `P,<pin>,<valeur>` et `X` compatibles avec le firmware actuel.
 
+L’état réseau distingue désormais trois cas :
+
+- `WIFI : AUCUNE CARTE RESEAU` : les tranches sont encore affectées à `USB` ou
+  `COMx` ;
+- `WIFI : EN ATTENTE` : une cible réseau est configurée mais aucun heartbeat
+  n’a été reçu ;
+- `WIFI : CONNECTE` : un heartbeat `H` a été reçu d’une cible ESP32 depuis moins
+  de 1,8 seconde.
+
 ## Compilation GitHub Actions
 
 Le projet contient maintenant une configuration Gradle et le workflow
