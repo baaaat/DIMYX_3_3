@@ -28,9 +28,15 @@ const uint8_t PWM_RESOLUTION = 12;
 const uint32_t HEARTBEAT_TIMEOUT_MS = 2000;
 
 WiFiUDP udp;
-char packetBuffer[96];
+char packetBuffer[512];
 uint32_t lastHeartbeat = 0;
 bool outputsEnabled = false;
+
+String deviceBoardId() {
+  String mac = DEVICE_ROLE == ROLE_ACCESS_POINT ? WiFi.softAPmacAddress() : WiFi.macAddress();
+  mac.replace(":", "");
+  return "ESP32-C3-" + mac;
+}
 
 void allOff() {
   for (uint8_t i = 0; i < PWM_CHANNEL_COUNT; ++i) ledcWrite(PWM_PINS[i], 0);
@@ -50,11 +56,28 @@ void reply(const char *message) {
   udp.endPacket();
 }
 
+void replyDiscovery() {
+  String message = "DIMYX_DISCOVERY;BOARD_ID:";
+  message += deviceBoardId();
+  message += ";IP:";
+  message += DEVICE_ROLE == ROLE_ACCESS_POINT ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
+  message += ";UDP_PORT:";
+  message += String(UDP_PORT);
+  message += ";ROLE:";
+  message += DEVICE_ROLE == ROLE_ACCESS_POINT ? "AP" : "STA";
+  message += "\n";
+  reply(message.c_str());
+}
+
 void handleCommand(char *command) {
   while (*command == ' ' || *command == '\t') ++command;
   if (strcmp(command, "H") == 0) {
     lastHeartbeat = millis();
     reply("H\n");
+    return;
+  }
+  if (strcmp(command, "DISCOVER") == 0) {
+    replyDiscovery();
     return;
   }
   if (strcmp(command, "X") == 0) {
@@ -105,7 +128,7 @@ void setup() {
   lastHeartbeat = millis();
   Serial.println("THEATRE_CONSOLE");
   Serial.print("BOARD_ID:");
-  Serial.println(DEVICE_ROLE == ROLE_ACCESS_POINT ? "ESP32-C3-MASTER" : "ESP32-C3-NODE");
+  Serial.println(deviceBoardId());
   Serial.print("ROLE:");
   Serial.println(DEVICE_ROLE == ROLE_ACCESS_POINT ? "AP" : "STA");
   Serial.print("IP:");
@@ -121,7 +144,10 @@ void loop() {
     if (length > 0) {
       packetBuffer[length] = '\0';
       char *line = strtok(packetBuffer, "\r\n");
-      if (line != nullptr) handleCommand(line);
+      while (line != nullptr) {
+        handleCommand(line);
+        line = strtok(nullptr, "\r\n");
+      }
     }
   }
   if (outputsEnabled && millis() - lastHeartbeat > HEARTBEAT_TIMEOUT_MS) allOff();

@@ -19,6 +19,11 @@ La connexion utilise **115200 bauds**. Les messages envoyés sont textuels et te
 
 En fonctionnement, les réponses sont lues jusqu’au saut de ligne. Exemple d’envoi : `P,3,2048\n`. Les sorties réglables dans l’interface vont de 0 à 15 ; leur nature physique dépend du firmware.
 
+Sur UDP, un même datagramme peut regrouper plusieurs commandes séparées par
+`\n`. Le récepteur ESP32-C3 les traite dans l’ordre avant de reprendre sa
+boucle réseau ; ce regroupement est utilisé pour limiter les décalages entre
+les composantes R, V et B.
+
 ## Temporisations
 
 | Paramètre | Valeur |
@@ -29,12 +34,12 @@ En fonctionnement, les réponses sont lues jusqu’au saut de ligne. Exemple d�
 | Tentative de reconnexion au dernier port | 2000 ms |
 | Nouveau scan sans port connu | 5000 ms |
 
-La détection ouvre les ports successivement, attend 1800 ms, lit le message de démarrage, envoie `H`, puis attend 300 ms. Elle mémorise chaque `BOARD_ID` reçu avec le port USB correspondant ; le premier contrôleur reconnu devient la connexion principale. Cette recherche est bloquante. Les valeurs de temporisation sont des seuils contrôlés dans la boucle, pas des garanties de temps réel.
+La détection ouvre les ports successivement, attend 1800 ms, lit le message de démarrage, envoie `H`, puis attend 300 ms. Elle mémorise chaque `BOARD_ID` reçu avec le port USB correspondant ; le premier contrôleur reconnu devient la connexion principale. Cette recherche est exécutée dans un thread séparé pour ne pas bloquer l’affichage de la console. Les valeurs de temporisation sont des seuils contrôlés dans la boucle, pas des garanties de temps réel.
 
 ## Perte et reprise
 
 Le watchdog s’arme après réception d’un heartbeat reconnu. Lors d’une perte traitée par `handleConnectionLoss`, le sketch mémorise la scène active, remet les tranches à zéro localement, invalide le cache des sorties et ferme le port. Il essaie ensuite de se reconnecter au dernier port et de rappeler la scène mémorisée.
 
-Le blackout local sur perte de connexion n’envoie pas `X` : l’extinction physique en l’absence de liaison dépend du firmware. Sa présence et son comportement restent à vérifier sur le matériel. Le bouton de blackout, lui, envoie `X` lorsque la liaison est disponible.
+Lors d’une perte de connexion, le sketch tente d’envoyer `X` à la cible concernée si le transport est encore utilisable, puis invalide uniquement les caches des tranches affectées. Si la liaison est réellement coupée, l’extinction physique dépend du watchdog du contrôleur ou du firmware ; ce comportement reste à vérifier sur le matériel. Le bouton de blackout, lui, envoie `X` à toutes les cibles connues lorsque les liaisons sont disponibles.
 
 À compléter lors d’une validation matérielle : modèle du contrôleur, firmware et version, affectation des sorties, comportement en perte USB et versions de Processing/ControlP5 testées.
