@@ -10,6 +10,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.WindowInsets;
+import android.view.RoundedCorner;
 import android.view.Window;
 import android.view.WindowManager;
 import android.os.Build;
@@ -101,6 +103,37 @@ public class MainActivity extends Activity {
 
         ConsoleView() { super(MainActivity.this); p.setTypeface(android.graphics.Typeface.create("sans", 0)); }
 
+        private int safeLeft, safeTop, safeRight, safeBottom;
+
+        private int dp(float value) {
+            return Math.round(value * getResources().getDisplayMetrics().density);
+        }
+
+        @Override public WindowInsets onApplyWindowInsets(WindowInsets insets) {
+            safeLeft = Math.max(dp(20), insets.getSystemWindowInsetLeft());
+            safeTop = Math.max(dp(20), insets.getSystemWindowInsetTop());
+            safeRight = Math.max(dp(20), insets.getSystemWindowInsetRight());
+            safeBottom = Math.max(dp(20), insets.getSystemWindowInsetBottom());
+            if (Build.VERSION.SDK_INT >= 28 && insets.getDisplayCutout() != null) {
+                android.view.DisplayCutout cutout = insets.getDisplayCutout();
+                safeLeft = Math.max(safeLeft, cutout.getSafeInsetLeft());
+                safeTop = Math.max(safeTop, cutout.getSafeInsetTop());
+                safeRight = Math.max(safeRight, cutout.getSafeInsetRight());
+                safeBottom = Math.max(safeBottom, cutout.getSafeInsetBottom());
+            }
+            if (Build.VERSION.SDK_INT >= 31) {
+                RoundedCorner tl = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT);
+                RoundedCorner tr = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_RIGHT);
+                RoundedCorner bl = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT);
+                RoundedCorner br = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT);
+                if (tl != null) safeLeft = Math.max(safeLeft, tl.getRadius());
+                if (tr != null) safeRight = Math.max(safeRight, tr.getRadius());
+                if (bl != null) safeLeft = Math.max(safeLeft, bl.getRadius());
+                if (br != null) safeRight = Math.max(safeRight, br.getRadius());
+            }
+            return insets;
+        }
+
         @Override protected void onDraw(Canvas c) {
             super.onDraw(c);
             long now = System.currentTimeMillis();
@@ -111,7 +144,7 @@ public class MainActivity extends Activity {
 
         private void drawConfiguration(Canvas c) {
             int w=getWidth(),h=getHeight(), bg=Color.rgb(32,36,45), panel=Color.rgb(48,54,67), accent=Color.rgb(104,167,177), secondary=Color.rgb(174,185,201);
-            c.drawColor(bg); p.setColor(panel); c.drawRect(0,0,w,64,p);
+            c.drawColor(bg); p.setColor(panel); c.drawRect(safeLeft,safeTop,w-safeRight,h-safeBottom,p);
             text(c,"DIMYX — CONFIGURATION",20,28,19,Color.WHITE); text(c,engine.connectionLabel(),20,50,11,engine.connectionColor());
             text(c,"Préparer le spectacle puis ouvrir l’écran des scènes.",20,96,14,secondary);
             int bw=Math.min(520,w-40), x=(w-bw)/2;
@@ -125,16 +158,16 @@ public class MainActivity extends Activity {
 
         private void drawScenesScreen(Canvas c) {
             int w=getWidth(),h=getHeight(), bg=Color.rgb(32,36,45), panel=Color.rgb(48,54,67), secondary=Color.rgb(174,185,201);
-            c.drawColor(bg); p.setColor(panel); c.drawRect(0,0,w,64,p);
+            c.drawColor(bg); p.setColor(panel); c.drawRect(safeLeft,safeTop,w-safeRight,h-safeBottom,p);
             text(c,"DIMYX — SCÈNES",20,28,19,Color.WHITE); text(c,engine.connectionLabel(),20,50,11,engine.connectionColor());
-            button(c,new RectF(w-250,12,w-138,52),"CONFIG",Color.rgb(66,73,87),Color.WHITE,12);
-            button(c,new RectF(w-126,12,w-12,52),"BLACKOUT",Color.rgb(164,47,65),Color.WHITE,12);
-            int margin=16, top=82, bottom=h-54, gap=10, cols=w<700?2:(w<1100?3:4), rowH=Math.max(58,Math.min(88,(bottom-top)/Math.max(1,Math.min(6,(engine.scenes.size()+cols-1)/cols))));
-            int rows=Math.max(1,(bottom-top)/rowH), perPage=cols*rows, first=engine.scenePage*perPage;
-            for(int i=0;i<perPage&&first+i<engine.scenes.size();i++){int idx=first+i;int col=i%cols,row=i/cols;float bw=(w-2*margin-(cols-1)*gap)/(float)cols;RectF r=new RectF(margin+col*(bw+gap),top+row*rowH,margin+(col+1)*bw-gap,top+row*rowH+rowH-gap);button(c,r,(idx+1)+". "+engine.scenes.get(idx).name,idx==engine.activeScene?Color.rgb(104,167,177):sceneColor(idx),Color.WHITE,Math.max(12,Math.min(18,bw/18)));}
-            text(c,engine.scenes.isEmpty()?"AUCUNE SCÈNE":(first+1)+"–"+Math.min(first+perPage,engine.scenes.size())+" / "+engine.scenes.size()+"    SCÈNE ACTIVE : "+engine.currentSceneName(),margin,h-22,12,secondary);
-            if(engine.scenePage>0)button(c,new RectF(w-210,h-46,w-112,h-10),"PRÉCÉDENT",panel,Color.WHITE,11);
-            if((engine.scenePage+1)*perPage<engine.scenes.size())button(c,new RectF(w-104,h-46,w-12,h-10),"SUIVANT",panel,Color.WHITE,11);
+            button(c,new RectF(w-safeRight-dp(250),safeTop+dp(12),w-safeRight-dp(138),safeTop+dp(56)),"CONFIG",Color.rgb(66,73,87),Color.WHITE,dp(12));
+            button(c,new RectF(w-safeRight-dp(126),safeTop+dp(12),w-safeRight-dp(12),safeTop+dp(56)),"BLACKOUT",Color.rgb(164,47,65),Color.WHITE,dp(12));
+            int margin=Math.max(safeLeft,dp(16)), top=safeTop+dp(84), bottom=h-safeBottom-dp(58), gap=dp(10), cols=2;
+            int available=bottom-top, rowH=Math.max(dp(64),available/5), rows=Math.max(1,Math.min(5,available/rowH)), perPage=Math.min(10,cols*rows), first=engine.scenePage*perPage;
+            for(int i=0;i<perPage&&first+i<engine.scenes.size();i++){int idx=first+i;int col=i%cols,row=i/cols;float bw=(w-2*margin-(cols-1)*gap)/(float)cols;RectF r=new RectF(margin+col*(bw+gap),top+row*rowH,margin+(col+1)*bw-gap,top+row*rowH+rowH-gap);button(c,r,(idx+1)+". "+engine.scenes.get(idx).name,idx==engine.activeScene?Color.rgb(104,167,177):sceneColor(idx),Color.WHITE,Math.max(dp(16),Math.min(dp(28),bw/9)));}
+            text(c,engine.scenes.isEmpty()?"AUCUNE SCÈNE":(first+1)+"–"+Math.min(first+perPage,engine.scenes.size())+" / "+engine.scenes.size()+"    SCÈNE ACTIVE : "+engine.currentSceneName(),margin,h-safeBottom-dp(22),dp(12),secondary);
+            if(engine.scenePage>0)button(c,new RectF(w-safeRight-dp(210),h-safeBottom-dp(50),w-safeRight-dp(112),h-safeBottom-dp(10)),"PRÉCÉDENT",panel,Color.WHITE,dp(11));
+            if((engine.scenePage+1)*perPage<engine.scenes.size())button(c,new RectF(w-safeRight-dp(104),h-safeBottom-dp(50),w-safeRight-dp(12),h-safeBottom-dp(10)),"SUIVANT",panel,Color.WHITE,dp(11));
         }
 
         private int sceneColor(int index){int[] colors={Color.rgb(68,87,111),Color.rgb(73,101,105),Color.rgb(92,81,113),Color.rgb(105,82,71),Color.rgb(65,99,87),Color.rgb(83,86,102)};return colors[index%colors.length];}
@@ -150,10 +183,10 @@ public class MainActivity extends Activity {
             if ((x>w-140 && y<70)||(x>w-140&&y>h-70)) { engine.blackout(); invalidate(); return true; }
             if(screen==0){int bw=Math.min(520,w-40),x0=(w-bw)/2,openY=Math.min(h-112,350);if(y>=122&&y<180)pickJson(0);else if(y>=194&&y<252)pickJson(1);else if(y>=266&&y<324)pickJson(2);else if(y>=openY&&y<openY+58){screen=1;invalidate();}return true;}
             if(y<70&&x>w-270&&x<w-130){screen=0;invalidate();return true;}
-            int margin=16,top=82,bottom=h-54,gap=10,cols=w<700?2:(w<1100?3:4),rowH=Math.max(58,Math.min(88,(bottom-top)/Math.max(1,Math.min(6,(engine.scenes.size()+cols-1)/cols)))),rows=Math.max(1,(bottom-top)/rowH),perPage=cols*rows,first=engine.scenePage*perPage;
+            int margin=Math.max(safeLeft,dp(16)),top=safeTop+dp(84),bottom=h-safeBottom-dp(58),gap=dp(10),cols=2,available=bottom-top,rowH=Math.max(dp(64),available/5),rows=Math.max(1,Math.min(5,available/rowH)),perPage=Math.min(10,cols*rows),first=engine.scenePage*perPage;
             if(y>=top&&y<bottom){int col=(int)((x-margin)/((w-2*margin-(cols-1)*gap)/(float)cols+gap)),row=(int)((y-top)/rowH),idx=first+row*cols+col;if(col>=0&&col<cols&&row>=0&&row<rows&&idx<engine.scenes.size()){engine.launch(idx);invalidate();}return true;}
-            if(y>h-54&&x>w-220&&x<w-110&&engine.scenePage>0){engine.scenePage--;invalidate();return true;}
-            if(y>h-54&&x>w-112&&(engine.scenePage+1)*perPage<engine.scenes.size()){engine.scenePage++;invalidate();return true;}
+            if(y>h-safeBottom-dp(58)&&x>w-safeRight-dp(220)&&x<w-safeRight-dp(110)&&engine.scenePage>0){engine.scenePage--;invalidate();return true;}
+            if(y>h-safeBottom-dp(58)&&x>w-safeRight-dp(112)&&(engine.scenePage+1)*perPage<engine.scenes.size()){engine.scenePage++;invalidate();return true;}
             return true;
         }
     }

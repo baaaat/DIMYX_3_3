@@ -6,7 +6,8 @@ fichiers de spectacle racine.
 
 ## Fonctionnalités
 
-- affichage paysage de cinq tranches, pages 1–5 et 6–10 ;
+- interface verrouillée en portrait ;
+- scènes affichées par pages de dix boutons maximum, en deux colonnes pour conserver des cibles tactiles larges et lisibles ;
 - liste et déclenchement des scènes ;
 - transitions locales ;
 - lecture des effets et séquenceurs ;

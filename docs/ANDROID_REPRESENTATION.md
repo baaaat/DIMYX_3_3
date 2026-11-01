@@ -7,7 +7,7 @@ et le pilotage tactile.
 
 ## Architecture livrée
 
-`MainActivity` dessine l’interface paysage et délègue les données à un moteur
+`MainActivity` dessine l’interface portrait et délègue les données à un moteur
 local. Le moteur lit les mêmes clés que `scenes.json` et `channelConfig.json` :
 niveaux `m`, couleurs `cr/cg/cb`, effets `fx/f/min`, séquenceurs `sa/bpm/steps`
 et affectations `pm/pr/pg/pb/board`.
@@ -28,6 +28,9 @@ adresses fixes lorsque la découverte UDP n’est pas souhaitée.
   seulement sur leur niveau de sortie.
 - BLACKOUT envoie `X`, force la sortie locale à zéro et reste accessible dans
   toutes les vues.
+- L’interface est verrouillée en portrait. Les scènes sont réparties sur des
+  pages de dix boutons maximum, en deux colonnes ; les marges tiennent compte
+  des insets système, des encoches et des coins arrondis de l’écran.
 
 L’état de connexion n’est pas déduit de la seule connexion de la tablette au
 point d’accès. Android envoie périodiquement `H` et n’affiche `CONNECTE` qu’à
