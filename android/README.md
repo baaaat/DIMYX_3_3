@@ -12,7 +12,7 @@ fichiers de spectacle racine.
 - transitions locales ;
 - lecture des effets et séquenceurs ;
 - BLACKOUT permanent ;
-- découverte automatique des ESP32 par UDP ;
+- découverte et connexion automatique au premier ESP32 par UDP ;
 - chargement de `scenes.json` et `channelConfig.json` par sélection de fichiers ;
 - chargement facultatif de `esp32Boards.json` pour des adresses fixes ;
 - commandes UDP `H`, `P,<pin>,<valeur>` et `X` compatibles avec le firmware actuel.
@@ -49,6 +49,11 @@ projet local peut être ouvert dans Android Studio en sélectionnant le dossier
 `android`.
 
 ## Utilisation des fichiers
+
+Si les tranches du fichier de configuration sont encore affectees a `USB` ou
+`COMx`, Android utilise automatiquement une carte unique decouverte par UDP,
+ou l'unique carte annoncee avec le role `AP`. Une affectation reseau explicite
+reste prioritaire lorsqu'il y a plusieurs cartes.
 
 Au premier lancement, l’application utilise un spectacle de démonstration
 intégré uniquement pour vérifier l’interface. Le bouton de chargement permet de

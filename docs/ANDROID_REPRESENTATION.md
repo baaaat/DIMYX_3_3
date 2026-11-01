@@ -7,6 +7,12 @@ et le pilotage tactile.
 
 ## Architecture livrée
 
+Lorsqu'aucune affectation reseau explicite n'est presente, une carte unique
+decouverte par UDP, ou l'unique carte annoncee avec le role `AP`, devient la
+cible automatique des tranches encore affectees a `USB` ou `COMx`. En presence
+de plusieurs cartes sans role `AP` unique, l'affectation reste explicite pour
+eviter d'envoyer une tranche vers la mauvaise carte.
+
 `MainActivity` dessine l’interface portrait et délègue les données à un moteur
 local. Le moteur lit les mêmes clés que `scenes.json` et `channelConfig.json` :
 niveaux `m`, couleurs `cr/cg/cb`, effets `fx/f/min`, séquenceurs `sa/bpm/steps`
