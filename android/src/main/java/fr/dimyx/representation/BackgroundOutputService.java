@@ -10,12 +10,13 @@ import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
 
 /** Maintient la sortie DIMYX quand l’Activity est suspendue écran éteint. */
 public class BackgroundOutputService extends Service {
     private static final String CHANNEL = "dimyx-output";
-    private final Handler handler = new Handler();
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
     private final Runnable tick = new Runnable() {
@@ -35,17 +36,26 @@ public class BackgroundOutputService extends Service {
                 .setSmallIcon(android.R.drawable.ic_media_play)
                 .setOngoing(true)
                 .build();
-        startForeground(17, notification);
+        try {
+            startForeground(17, notification);
 
-        PowerManager power = (PowerManager)getSystemService(POWER_SERVICE);
-        wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "DIMYX:Output");
-        wakeLock.acquire();
-        WifiManager wifi = (WifiManager)getApplicationContext().getSystemService(Context.WIFI_SERVICE);
-        if (wifi != null) {
-            wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "DIMYX:Wifi");
-            wifiLock.acquire();
+            PowerManager power = (PowerManager)getSystemService(POWER_SERVICE);
+            if (power != null) {
+                wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "DIMYX:Output");
+                wakeLock.setReferenceCounted(false);
+                wakeLock.acquire();
+            }
+            WifiManager wifi = (WifiManager)getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wifi != null) {
+                wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "DIMYX:Wifi");
+                wifiLock.setReferenceCounted(false);
+                wifiLock.acquire();
+            }
+            handler.post(tick);
+        } catch (RuntimeException unavailable) {
+            releaseLocks();
+            stopSelf();
         }
-        handler.post(tick);
     }
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
@@ -54,9 +64,13 @@ public class BackgroundOutputService extends Service {
 
     @Override public void onDestroy() {
         handler.removeCallbacks(tick);
+        releaseLocks();
+        super.onDestroy();
+    }
+
+    private void releaseLocks() {
         if (wifiLock != null && wifiLock.isHeld()) wifiLock.release();
         if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
-        super.onDestroy();
     }
 
     @Override public IBinder onBind(Intent intent) { return null; }

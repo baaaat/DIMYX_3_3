@@ -19,9 +19,15 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Locale;
@@ -33,6 +39,7 @@ public class MainActivity extends Activity {
     private ConsoleView console;
     private int pickKind = 0; // 0 scènes, 1 configuration, 2 cartes
     private boolean pickerOpen;
+    private final String[] lastGoodJson = new String[3];
     static ShowEngine sharedEngine;
 
     @Override public void onCreate(Bundle state) {
@@ -41,8 +48,10 @@ public class MainActivity extends Activity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        engine = new ShowEngine();
+        boolean freshEngine = sharedEngine == null;
+        engine = freshEngine ? new ShowEngine() : sharedEngine;
         sharedEngine = engine;
+        if (freshEngine) loadPersistedConfigurations();
         console = new ConsoleView();
         setContentView(console);
     }
@@ -50,14 +59,28 @@ public class MainActivity extends Activity {
     @Override protected void onPause() {
         super.onPause();
         if (!isFinishing() && !pickerOpen) {
-            Intent service = new Intent(this, BackgroundOutputService.class);
-            if (Build.VERSION.SDK_INT >= 26) startForegroundService(service); else startService(service);
+            try {
+                Intent service = new Intent(this, BackgroundOutputService.class);
+                if (Build.VERSION.SDK_INT >= 26) startForegroundService(service); else startService(service);
+            } catch (RuntimeException ignored) {
+                engine.status = "SERVICE ARRIERE-PLAN INDISPONIBLE";
+                if (console != null) console.invalidate();
+            }
         }
     }
 
     @Override protected void onResume() {
         super.onResume();
-        stopService(new Intent(this, BackgroundOutputService.class));
+        if (!pickerOpen) {
+            try { stopService(new Intent(this, BackgroundOutputService.class)); } catch (RuntimeException ignored) { }
+        }
+    }
+
+    @Override protected void onDestroy() {
+        if (isFinishing()) {
+            try { stopService(new Intent(this, BackgroundOutputService.class)); } catch (RuntimeException ignored) { }
+        }
+        super.onDestroy();
     }
 
     private void pickJson(int kind) {
@@ -81,12 +104,77 @@ public class MainActivity extends Activity {
         try (InputStream in = getContentResolver().openInputStream(data.getData())) {
             if (in == null) throw new IllegalStateException("Fichier inaccessible");
             String text = readAll(in);
-            if (pickKind == 0) engine.loadScenes(text);
-            else if (pickKind == 1) engine.loadChannels(text);
+            int loadedKind = pickKind;
+            if (loadedKind == 0) engine.loadScenes(text);
+            else if (loadedKind == 1) engine.loadChannels(text);
             else engine.loadBoards(text);
+            persistJson(loadedKind, text);
+            lastGoodJson[loadedKind] = text;
             pickKind = (pickKind + 1) % 3;
             console.invalidate();
-        } catch (Exception ignored) { engine.status = "FICHIER INVALIDE OU INACCESSIBLE"; console.invalidate(); }
+        } catch (Exception ignored) {
+            restoreLastGoodConfiguration(pickKind);
+            engine.status = "FICHIER INVALIDE OU INACCESSIBLE";
+            console.invalidate();
+        }
+    }
+
+    private File configFile(int kind, boolean backup) {
+        String name = kind == 0 ? "scenes.json" : kind == 1 ? "channelConfig.json" : "esp32Boards.json";
+        return new File(getFilesDir(), name + (backup ? ".bak" : ""));
+    }
+
+    private void loadPersistedConfigurations() {
+        for (int kind = 0; kind < 3; kind++) {
+            try {
+                String raw = readFile(configFile(kind, false));
+                loadJson(kind, raw);
+                lastGoodJson[kind] = raw;
+            } catch (Exception primaryFailure) {
+                try {
+                    String backup = readFile(configFile(kind, true));
+                    loadJson(kind, backup);
+                    lastGoodJson[kind] = backup;
+                } catch (Exception ignored) { }
+            }
+        }
+    }
+
+    private void restoreLastGoodConfiguration(int kind) {
+        if (kind < 0 || kind >= lastGoodJson.length || lastGoodJson[kind] == null) return;
+        try { loadJson(kind, lastGoodJson[kind]); } catch (Exception ignored) { }
+    }
+
+    private void loadJson(int kind, String raw) throws Exception {
+        if (kind == 0) engine.loadScenes(raw);
+        else if (kind == 1) engine.loadChannels(raw);
+        else engine.loadBoards(raw);
+    }
+
+    private String readFile(File file) throws Exception {
+        if (!file.isFile()) throw new IOException("Fichier absent");
+        try (InputStream in = new FileInputStream(file)) { return readAll(in); }
+    }
+
+    private void persistJson(int kind, String raw) throws IOException {
+        File target = configFile(kind, false);
+        File backup = configFile(kind, true);
+        File temporary = new File(getFilesDir(), target.getName() + ".tmp");
+        try {
+            try (FileOutputStream out = new FileOutputStream(temporary, false)) {
+                out.write(raw.getBytes(StandardCharsets.UTF_8));
+                out.flush();
+                out.getFD().sync();
+            }
+            if (target.isFile()) Files.copy(target.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            try {
+                Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            if (temporary.exists()) temporary.delete();
+        }
     }
 
     private static String readAll(InputStream in) throws Exception {
@@ -106,6 +194,20 @@ public class MainActivity extends Activity {
 
         private int dp(float value) {
             return Math.round(value * getResources().getDisplayMetrics().density);
+        }
+
+        private RectF configBounds() {
+            int w = getWidth();
+            return new RectF(w - safeRight - dp(250), safeTop + dp(12),
+                    w - safeRight - dp(138), safeTop + dp(56));
+        }
+
+        private RectF blackoutBounds() {
+            int w = getWidth(), h = getHeight();
+            if (screen == 0) return new RectF(w - safeRight - dp(126), h - safeBottom - dp(52),
+                    w - safeRight - dp(12), h - safeBottom - dp(12));
+            return new RectF(w - safeRight - dp(126), safeTop + dp(12),
+                    w - safeRight - dp(12), safeTop + dp(56));
         }
 
         @Override public WindowInsets onApplyWindowInsets(WindowInsets insets) {
@@ -141,16 +243,17 @@ public class MainActivity extends Activity {
             button(c,new RectF(x,194,x+bw,252),"CHARGER CHANNELCONFIG.JSON",panel,Color.WHITE,15);
             button(c,new RectF(x,266,x+bw,324),"CHARGER ESP32BOARDS.JSON (OPTIONNEL)",panel,Color.WHITE,13);
             button(c,new RectF(x,Math.min(h-112,350),x+bw,Math.min(h-54,408)),"OUVRIR LES SCÈNES",Color.rgb(66,73,87),Color.WHITE,15);
-            text(c,"Écran maintenu actif pendant la représentation.",20,h-22,11,secondary);
-            button(c,new RectF(w-126,h-52,w-12,h-12),"BLACKOUT",Color.rgb(164,47,65),Color.WHITE,12);
+            text(c,"Écran maintenu actif pendant la représentation.",safeLeft,h-safeBottom-dp(22),dp(11),secondary);
+            RectF blackout = blackoutBounds();
+            button(c,blackout,"BLACKOUT",Color.rgb(164,47,65),Color.WHITE,dp(12));
         }
 
         private void drawScenesScreen(Canvas c) {
             int w=getWidth(),h=getHeight(), bg=Color.rgb(32,36,45), panel=Color.rgb(48,54,67), secondary=Color.rgb(174,185,201);
             c.drawColor(bg); p.setColor(panel); c.drawRect(safeLeft,safeTop,w-safeRight,h-safeBottom,p);
             text(c,"DIMYX — SCÈNES",20,28,19,Color.WHITE); text(c,engine.connectionLabel(),20,50,11,engine.connectionColor());
-            button(c,new RectF(w-safeRight-dp(250),safeTop+dp(12),w-safeRight-dp(138),safeTop+dp(56)),"CONFIG",Color.rgb(66,73,87),Color.WHITE,dp(12));
-            button(c,new RectF(w-safeRight-dp(126),safeTop+dp(12),w-safeRight-dp(12),safeTop+dp(56)),"BLACKOUT",Color.rgb(164,47,65),Color.WHITE,dp(12));
+            button(c,configBounds(),"CONFIG",Color.rgb(66,73,87),Color.WHITE,dp(12));
+            button(c,blackoutBounds(),"BLACKOUT",Color.rgb(164,47,65),Color.WHITE,dp(12));
             int margin=Math.max(safeLeft,dp(16)), top=safeTop+dp(84), bottom=h-safeBottom-dp(58), gap=dp(10), cols=2;
             int available=bottom-top, rowH=Math.max(dp(64),available/5), rows=Math.max(1,Math.min(5,available/rowH)), perPage=Math.min(10,cols*rows), first=engine.scenePage*perPage;
             for(int i=0;i<perPage&&first+i<engine.scenes.size();i++){int idx=first+i;int col=i%cols,row=i/cols;float bw=(w-2*margin-(cols-1)*gap)/(float)cols;RectF r=new RectF(margin+col*(bw+gap),top+row*rowH,margin+(col+1)*bw-gap,top+row*rowH+rowH-gap);button(c,r,(idx+1)+". "+engine.scenes.get(idx).name,idx==engine.activeScene?Color.rgb(104,167,177):sceneColor(idx),Color.WHITE,Math.max(dp(16),Math.min(dp(28),bw/9)));}
@@ -169,9 +272,9 @@ public class MainActivity extends Activity {
         @Override public boolean onTouchEvent(MotionEvent e) {
             int w=getWidth(), h=getHeight(); float x=e.getX(), y=e.getY();
             if (e.getAction()!=MotionEvent.ACTION_DOWN) return true;
-            if ((x>w-140 && y<70)||(x>w-140&&y>h-70)) { engine.blackout(); invalidate(); return true; }
+            if (blackoutBounds().contains(x, y)) { engine.blackout(); invalidate(); return true; }
             if(screen==0){int bw=Math.min(520,w-40),x0=(w-bw)/2,openY=Math.min(h-112,350);if(y>=122&&y<180)pickJson(0);else if(y>=194&&y<252)pickJson(1);else if(y>=266&&y<324)pickJson(2);else if(y>=openY&&y<openY+58){screen=1;invalidate();}return true;}
-            if(y<70&&x>w-270&&x<w-130){screen=0;invalidate();return true;}
+            if(configBounds().contains(x, y)){screen=0;invalidate();return true;}
             int margin=Math.max(safeLeft,dp(16)),top=safeTop+dp(84),bottom=h-safeBottom-dp(58),gap=dp(10),cols=2,available=bottom-top,rowH=Math.max(dp(64),available/5),rows=Math.max(1,Math.min(5,available/rowH)),perPage=Math.min(10,cols*rows),first=engine.scenePage*perPage;
             if(y>=top&&y<bottom){int col=(int)((x-margin)/((w-2*margin-(cols-1)*gap)/(float)cols+gap)),row=(int)((y-top)/rowH),idx=first+row*cols+col;if(col>=0&&col<cols&&row>=0&&row<rows&&idx<engine.scenes.size()){engine.launch(idx);invalidate();}return true;}
             if(y>h-safeBottom-dp(58)&&x>w-safeRight-dp(220)&&x<w-safeRight-dp(110)&&engine.scenePage>0){engine.scenePage--;invalidate();return true;}

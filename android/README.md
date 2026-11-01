@@ -18,6 +18,8 @@ fichiers de spectacle racine.
 - commandes UDP `H`, `P,<pin>,<valeur>` et `X` compatibles avec le firmware actuel.
 - maintien des sorties, animations et heartbeats écran éteint via un service
   Android au premier plan ;
+- restauration des configurations depuis le stockage privé de l’application,
+  avec sauvegarde de secours en cas de fichier invalide ;
 
 En mode séquenceur RGB, la couleur du pas courant est envoyée avec son
 intensité. Le firmware ESP32-C3 fourni dans ce dépôt accepte actuellement les
@@ -77,3 +79,8 @@ Lorsque l’Activity est suspendue parce que l’écran s’éteint, le service
 `BackgroundOutputService` reprend la boucle à 33 ms et conserve un verrou CPU et
 Wi-Fi. Une notification persistante indique que la sortie spectacle reste
 active. Le service est arrêté au retour dans l’application.
+
+Les fichiers importés sont copiés dans le stockage privé de l’application et
+rechargés au démarrage suivant. Une écriture temporaire et une copie `.bak`
+protègent la dernière configuration valide contre une interruption pendant la
+sauvegarde.

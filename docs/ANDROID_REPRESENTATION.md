@@ -31,6 +31,8 @@ adresses fixes lorsque la découverte UDP n’est pas souhaitée.
 - L’interface est verrouillée en portrait. Les scènes sont réparties sur des
   pages de dix boutons maximum, en deux colonnes ; les marges tiennent compte
   des insets système, des encoches et des coins arrondis de l’écran.
+- Les fichiers JSON importés sont persistés dans le stockage privé Android,
+  rechargés au démarrage et protégés par une copie `.bak` lors de l’écriture.
 
 L’état de connexion n’est pas déduit de la seule connexion de la tablette au
 point d’accès. Android envoie périodiquement `H` et n’affiche `CONNECTE` qu’à
