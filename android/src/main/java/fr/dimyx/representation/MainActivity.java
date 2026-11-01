@@ -11,7 +11,6 @@ import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowInsets;
-import android.view.RoundedCorner;
 import android.view.Window;
 import android.view.WindowManager;
 import android.os.Build;
@@ -120,16 +119,6 @@ public class MainActivity extends Activity {
                 safeTop = Math.max(safeTop, cutout.getSafeInsetTop());
                 safeRight = Math.max(safeRight, cutout.getSafeInsetRight());
                 safeBottom = Math.max(safeBottom, cutout.getSafeInsetBottom());
-            }
-            if (Build.VERSION.SDK_INT >= 31) {
-                RoundedCorner tl = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT);
-                RoundedCorner tr = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_RIGHT);
-                RoundedCorner bl = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT);
-                RoundedCorner br = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_RIGHT);
-                if (tl != null) safeLeft = Math.max(safeLeft, tl.getRadius());
-                if (tr != null) safeRight = Math.max(safeRight, tr.getRadius());
-                if (bl != null) safeLeft = Math.max(safeLeft, bl.getRadius());
-                if (br != null) safeRight = Math.max(safeRight, br.getRadius());
             }
             return insets;
         }
