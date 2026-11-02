@@ -17,7 +17,7 @@ jobs:
       matrix:
         include:
           - arch: intel
-            runner: macos-13
+            runner: macos-15-intel
 
     steps:
       - name: Récupérer le dépôt

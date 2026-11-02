@@ -49,7 +49,7 @@ les tâches matérielles ou de validation utilisateur du `TODO.md`.
 Le workflow `.github/workflows/macos.yml` exporte actuellement la variante
 Intel :
 
-- `dimyx-macos-intel` depuis un runner macOS Intel ;
+- `dimyx-macos-intel` depuis un runner macOS 15 Intel ;
 
 Dans GitHub, ouvrir **Actions → Processing macOS applications → Run workflow**.
 Le fichier ZIP sera disponible comme artefact du workflow. Il n’est ni signé
