@@ -1,0 +1,57 @@
+name: Processing macOS applications
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-macos:
+    name: Export macOS (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: intel
+            runner: macos-13
+          - arch: arm64
+            runner: macos-14
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Installer Processing
+        run: brew install --cask processing
+
+      - name: Installer ControlP5 2.2.6
+        shell: bash
+        run: |
+          mkdir -p "$HOME/Documents/Processing/libraries"
+          curl --fail --location \
+            "https://github.com/sojamo/controlp5/releases/download/v2.2.6/controlP5-2.2.6.zip" \
+            --output "$RUNNER_TEMP/controlP5.zip"
+          unzip -q "$RUNNER_TEMP/controlP5.zip" -d "$HOME/Documents/Processing/libraries"
+
+      - name: Exporter l’application Processing
+        shell: bash
+        env:
+          PROCESSING_JAVA: /Applications/Processing.app/Contents/MacOS/processing
+        run: bash ./macos/export-macos.sh "${{ matrix.arch }}"
+
+      - name: Empaqueter le paquet macOS
+        shell: bash
+        run: |
+          app="$(find "build/macos/export-${{ matrix.arch }}" -maxdepth 2 -name '*.app' -print -quit)"
+          test -n "$app"
+          ditto -c -k --sequesterRsrc --keepParent "$app" \
+            "build/macos/DIMYX-${{ matrix.arch }}.zip"
+
+      - name: Publier l’application macOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: dimyx-macos-${{ matrix.arch }}
+          path: build/macos/DIMYX-${{ matrix.arch }}.zip
+          if-no-files-found: error
