@@ -2,6 +2,8 @@ name: Processing macOS applications
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ 'feature/**' ]
 
 permissions:
   contents: read
