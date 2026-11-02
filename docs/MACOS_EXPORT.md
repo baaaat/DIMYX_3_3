@@ -46,12 +46,12 @@ les tâches matérielles ou de validation utilisateur du `TODO.md`.
 
 ## Export GitHub Actions
 
-Le workflow manuel `.github/workflows/macos.yml` exporte deux variantes :
+Le workflow `.github/workflows/macos.yml` exporte actuellement la variante
+Intel :
 
 - `dimyx-macos-intel` depuis un runner macOS Intel ;
-- `dimyx-macos-arm64` depuis un runner macOS Apple Silicon.
 
 Dans GitHub, ouvrir **Actions → Processing macOS applications → Run workflow**.
-Les deux fichiers ZIP seront disponibles comme artefacts du workflow. Ils ne
-sont ni signés ni notariés par Apple ; une validation sur Mac reste requise
+Le fichier ZIP sera disponible comme artefact du workflow. Il n’est ni signé
+ni notarié par Apple ; une validation sur Mac reste requise
 avant distribution.

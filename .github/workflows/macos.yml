@@ -18,8 +18,6 @@ jobs:
         include:
           - arch: intel
             runner: macos-13
-          - arch: arm64
-            runner: macos-14
 
     steps:
       - name: Récupérer le dépôt
