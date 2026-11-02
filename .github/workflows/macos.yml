@@ -39,9 +39,12 @@ jobs:
 
       - name: Exporter l’application Processing
         shell: bash
-        env:
-          PROCESSING_JAVA: /Applications/Processing.app/Contents/MacOS/processing
-        run: bash ./macos/export-macos.sh "${{ matrix.arch }}"
+        run: |
+          processing_java="$(find /Applications/Processing.app/Contents/MacOS \
+            -maxdepth 1 -type f \( -name 'processing' -o -name 'Processing' -o -name 'processing-java' \) \
+            -print -quit)"
+          test -n "$processing_java"
+          PROCESSING_JAVA="$processing_java" bash ./macos/export-macos.sh "${{ matrix.arch }}"
 
       - name: Empaqueter le paquet macOS
         shell: bash
